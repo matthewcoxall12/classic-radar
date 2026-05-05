@@ -1,0 +1,10 @@
+.next
+node_modules
+.env
+.env*.local
+dist
+coverage
+.vercel
+*.tsbuildinfo
+dev-server*.log
+supabase/.temp

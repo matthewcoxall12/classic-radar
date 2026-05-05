@@ -1,0 +1,4 @@
+project_id = "classic-radar"
+
+[functions.event-discovery-agent]
+verify_jwt = false
