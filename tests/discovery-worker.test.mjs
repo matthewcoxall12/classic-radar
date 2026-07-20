@@ -31,6 +31,22 @@ test("eventLinks remains on the registered source origin", () => {
   );
 });
 
+test("eventLinks ranks dated detail pages ahead of generic calendars", () => {
+  const html = [
+    '<a href="/events/">Classic car events</a>',
+    '<a href="/event-type/shows/">Classic car shows</a>',
+    '<a href="/events/summer-rally">Summer rally 9 August 2027</a>',
+    '<a href="/events/winter-trial">Winter trial</a>',
+  ].join("");
+  assert.deepEqual(
+    eventLinks(html, "https://official.example/whats-on", 2),
+    [
+      "https://official.example/events/summer-rally",
+      "https://official.example/events/winter-trial",
+    ],
+  );
+});
+
 test("network guard permits public addresses and rejects private ranges", () => {
   assert.equal(isPublicAddress("8.8.8.8"), true);
   assert.equal(isPublicAddress("2606:4700:4700::1111"), true);
