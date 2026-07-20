@@ -1,7 +1,7 @@
 "use client";
 
 import { Crosshair, MapPin } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 type LocationSearchProps = {
   defaultValue?: string;
@@ -16,21 +16,9 @@ export function LocationSearch({ defaultValue = "", defaultLatitude = "", defaul
   const latitudeRef = useRef<HTMLInputElement>(null);
   const longitudeRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const savedLatitude = window.localStorage.getItem("classic-radar-lat");
-    const savedLongitude = window.localStorage.getItem("classic-radar-lng");
-    if (!defaultLatitude && !defaultLongitude && savedLatitude && savedLongitude) {
-      setLatitude(savedLatitude);
-      setLongitude(savedLongitude);
-      if (latitudeRef.current) latitudeRef.current.value = savedLatitude;
-      if (longitudeRef.current) longitudeRef.current.value = savedLongitude;
-      setStatus("Current location ready. Set a radius, then press Find events.");
-    }
-  }, [defaultLatitude, defaultLongitude]);
-
   function useCurrentLocation() {
-    const savedLatitude = window.localStorage.getItem("classic-radar-lat");
-    const savedLongitude = window.localStorage.getItem("classic-radar-lng");
+    const savedLatitude = window.sessionStorage.getItem("classicsgo-lat");
+    const savedLongitude = window.sessionStorage.getItem("classicsgo-lng");
     if (savedLatitude && savedLongitude) {
       setLatitude(savedLatitude);
       setLongitude(savedLongitude);
@@ -48,14 +36,14 @@ export function LocationSearch({ defaultValue = "", defaultLatitude = "", defaul
     setStatus("Requesting location...");
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const nextLatitude = String(position.coords.latitude);
-        const nextLongitude = String(position.coords.longitude);
+        const nextLatitude = position.coords.latitude.toFixed(3);
+        const nextLongitude = position.coords.longitude.toFixed(3);
         setLatitude(nextLatitude);
         setLongitude(nextLongitude);
         if (latitudeRef.current) latitudeRef.current.value = nextLatitude;
         if (longitudeRef.current) longitudeRef.current.value = nextLongitude;
-        window.localStorage.setItem("classic-radar-lat", nextLatitude);
-        window.localStorage.setItem("classic-radar-lng", nextLongitude);
+        window.sessionStorage.setItem("classicsgo-lat", nextLatitude);
+        window.sessionStorage.setItem("classicsgo-lng", nextLongitude);
         setStatus("Current location ready. Set a radius, then press Find events.");
       },
       () => {
@@ -74,6 +62,12 @@ export function LocationSearch({ defaultValue = "", defaultLatitude = "", defaul
           <input
             name="location"
             defaultValue={defaultValue}
+            maxLength={120}
+            onChange={() => {
+              setLatitude("");
+              setLongitude("");
+              setStatus("");
+            }}
             autoComplete="postal-code"
             inputMode="text"
             aria-label="Postcode, town or city"

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import { createHash, randomUUID } from "node:crypto";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { pathToFileURL } from "node:url";
 
 const DEFAULT_INGEST_URL =
@@ -137,6 +139,45 @@ function safePublicUrl(value, base) {
     }
   }
   return url.toString();
+}
+
+export function isPublicAddress(value) {
+  const address = String(value ?? "").toLowerCase().split("%")[0];
+  const version = isIP(address);
+  if (version === 4) {
+    const [first, second, third] = address.split(".").map(Number);
+    return !(
+      first === 0 || first === 10 || first === 127 || first >= 224 ||
+      (first === 100 && second >= 64 && second <= 127) ||
+      (first === 169 && second === 254) ||
+      (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && second === 168) ||
+      (first === 192 && second === 0 && (third === 0 || third === 2)) ||
+      (first === 198 && (second === 18 || second === 19)) ||
+      (first === 198 && second === 51 && third === 100) ||
+      (first === 203 && second === 0 && third === 113)
+    );
+  }
+  if (version === 6) {
+    if (address.startsWith("::ffff:") || address.startsWith("64:ff9b:")) return false;
+    if (address.startsWith("2001:db8:")) return false;
+    const first = Number.parseInt(address.split(":")[0] || "0", 16);
+    return first >= 0x2000 && first <= 0x3fff;
+  }
+  return false;
+}
+
+async function assertPublicResolution(value) {
+  const url = new URL(value);
+  const addresses = await lookup(url.hostname, { all: true, verbatim: true });
+  if (!addresses.length || addresses.some(({ address }) => !isPublicAddress(address))) {
+    throw new Error("DNS_REJECTED");
+  }
+}
+
+function samePublisherHost(left, right) {
+  const normalise = (value) => value.toLowerCase().replace(/^www\./, "");
+  return normalise(left) === normalise(right);
 }
 
 function sha256(value) {
@@ -423,7 +464,9 @@ function robotsAllowsText(text, pathname) {
 async function fetchRaw(url, options = {}) {
   let current = safePublicUrl(url);
   if (!current) throw new Error("URL_REJECTED");
+  const initialHostname = new URL(current).hostname;
   for (let redirect = 0; redirect <= 3; redirect += 1) {
+    await assertPublicResolution(current);
     const response = await fetch(current, {
       headers: {
         Accept: options.accept ||
@@ -436,6 +479,9 @@ async function fetchRaw(url, options = {}) {
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const next = safePublicUrl(response.headers.get("location"), current);
       if (!next || redirect === 3) throw new Error("REDIRECT_REJECTED");
+      if (!samePublisherHost(initialHostname, new URL(next).hostname)) {
+        throw new Error("CROSS_ORIGIN_REDIRECT");
+      }
       current = next;
       continue;
     }
@@ -645,10 +691,32 @@ function selectedSources(catalog) {
   return filtered.slice(offset, offset + limit);
 }
 
+function localDryRunCatalog() {
+  const url = safePublicUrl(process.env.DISCOVERY_SOURCE_URL);
+  if (!url) {
+    throw new Error(
+      "Local dry-runs require an explicit public DISCOVERY_SOURCE_URL",
+    );
+  }
+  const countryCode = cleanText(process.env.DISCOVERY_SOURCE_COUNTRY, 2)
+    .toUpperCase();
+  return [{
+    key: cleanText(process.env.DISCOVERY_SOURCE_KEY, 120) || "local-dry-run",
+    name: cleanText(process.env.DISCOVERY_SOURCE_NAME, 180) ||
+      new URL(url).hostname,
+    url,
+    sourceType: "organiser",
+    countryCode: /^[A-Z]{2}$/.test(countryCode) ? countryCode : "GB",
+    region: cleanText(process.env.DISCOVERY_SOURCE_REGION, 120) || null,
+  }];
+}
+
 export async function main() {
   const dryRun = String(process.env.DISCOVERY_DRY_RUN || "").toLowerCase() === "true";
-  const catalogResponse = await ingest({ phase: "catalog" });
-  const sources = selectedSources(catalogResponse.catalog || []);
+  const catalog = dryRun
+    ? localDryRunCatalog()
+    : (await ingest({ phase: "catalog" })).catalog || [];
+  const sources = selectedSources(catalog);
   if (!sources.length) throw new Error("No discovery sources matched this run");
   const detailLimit = boundedInteger(process.env.DISCOVERY_DETAIL_LIMIT, 3, 0, 8);
   const concurrency = boundedInteger(process.env.DISCOVERY_CONCURRENCY, 5, 1, 8);

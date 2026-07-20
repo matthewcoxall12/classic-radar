@@ -6,9 +6,11 @@ const typeStyles: Record<string, string> = {
   "Club meet": "bg-moss/15 text-racing",
   Autojumble: "bg-oxblood/10 text-oxblood",
   "Rally / road run": "bg-ink/10 text-ink",
+  Motorsport: "bg-cobalt/10 text-cobalt",
   "Museum / venue event": "bg-[#d7e8de] text-racing",
   "American / hot rod": "bg-oxblood/12 text-oxblood",
   "Vintage / pre-war": "bg-brass/15 text-[#704c15]",
+  "Marque-specific": "bg-[#dce8f0] text-ink",
   "Austin / Mini / marque-specific": "bg-[#dce8f0] text-ink"
 };
 

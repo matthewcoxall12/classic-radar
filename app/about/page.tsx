@@ -1,0 +1,8 @@
+import type { Metadata } from "next";
+import { ContentPage } from "@/components/ContentPage";
+
+export const metadata: Metadata = { title: "About", description: "Why ClassicsGo exists and how its classic car event finder works.", alternates: { canonical: "/about" } };
+
+export default function AboutPage() {
+  return <ContentPage eyebrow="About ClassicsGo" title="More time driving. Less time hunting for dates." intro="ClassicsGo is a classic car event discovery service built to bring large national shows and easily missed local gatherings into one useful calendar."><h2>What the app does</h2><p>We discover public information about classic car shows, club meets, autojumbles, road runs, motorsport, museum days and related gatherings across the UK and Europe. Visitors can search by location and distance, check the source, open the official organiser page and see how many ClassicsGo members plan to attend.</p><h2>How listings are handled</h2><p>Automated discovery helps us cover a wide area, but publication is governed by confidence and review rules. Listings retain their source and official link wherever available. Event details can change, so the organiser remains the final authority.</p><h2>Who it is for</h2><p>ClassicsGo is for owners, enthusiasts, families, clubs, museums, organisers and local businesses that keep classic motoring culture moving. Clubs and organisers can submit missing events free of charge.</p><h2>Independent and growing</h2><p>ClassicsGo is an independent service. It is not affiliated with Google, Facebook, Eventbrite or the organisers linked from individual event pages. Partnership and advertising options may be introduced later and will always be identified clearly.</p></ContentPage>;
+}

@@ -12,9 +12,7 @@ export default async function AdminAgentRunsPage({ searchParams }: { searchParam
           Run type filter
           <select name="runType" defaultValue={params.runType ?? ""} className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3">
             <option value="">All run types</option>
-            <option value="morning_broad">Morning broad</option>
-            <option value="midday_near_term">Midday near-term</option>
-            <option value="evening_social">Evening social</option>
+            <option value="scheduled_deep">Scheduled deep</option>
             <option value="manual_deep">Manual deep</option>
           </select>
         </label>

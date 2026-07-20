@@ -186,6 +186,7 @@ async function catalog() {
   const query = new URLSearchParams({
     select: "source_key,source_name,domain,start_url,source_type,format_hint,country_code,region,priority_weight,crawl_frequency,requires_review,notes",
     is_active: "eq.true",
+    format_hint: "eq.html",
     order: "priority_weight.desc,source_key.asc",
     limit: "200"
   });
@@ -201,7 +202,7 @@ async function catalog() {
       url: startUrl,
       domain: hostname,
       sourceType: sourceType(row.source_type),
-      format: ["html", "rss", "ics", "search"].includes(String(row.format_hint)) ? String(row.format_hint) : "html",
+      format: "html",
       countryCode: /^[A-Z]{2}$/.test(String(row.country_code)) ? String(row.country_code) : "GB",
       region: optionalText(row.region, 120),
       priority: integer(row.priority_weight, 0, 100),

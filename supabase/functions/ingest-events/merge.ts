@@ -37,4 +37,3 @@ export function mergeExistingEvent(incoming: EventRow, existing: EventRow): Even
 export function uniqueSourceCount(existingUrls: string[], incomingUrls: string[]): number {
   return new Set([...existingUrls, ...incomingUrls].filter(Boolean)).size;
 }
-

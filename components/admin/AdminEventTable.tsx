@@ -1,4 +1,6 @@
 import { CheckCircle2, CircleSlash, Pencil } from "lucide-react";
+import { setEventStatus } from "@/app/admin/events/actions";
+import Link from "next/link";
 import { EventTypeBadge } from "@/components/EventTypeBadge";
 import type { ClassicEvent } from "@/lib/types";
 
@@ -31,9 +33,13 @@ export function AdminEventTable({ events }: { events: ClassicEvent[] }) {
                 </td>
                 <td className="px-4 py-3 font-black">{event.confidence_score}</td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-2 text-muted">
-                    <Pencil className="h-4 w-4" />
-                    {event.is_verified ? <CheckCircle2 className="h-4 w-4 text-racing" /> : <CircleSlash className="h-4 w-4" />}
+                  <div className="flex min-w-36 flex-wrap items-center gap-2 text-muted">
+                    <span title={event.is_verified ? "Verified" : "Not verified"}>
+                      {event.is_verified ? <CheckCircle2 className="h-4 w-4 text-racing" /> : <CircleSlash className="h-4 w-4" />}
+                    </span>
+                    <Link href={`/admin/events/${event.id}`} className="focus-ring inline-flex items-center gap-1 rounded-md border border-ink/15 px-2.5 py-1.5 text-xs font-black text-ink"><Pencil className="h-3.5 w-3.5" /> Edit</Link>
+                    {event.status !== "published" ? <StatusButton id={event.id} status="published">Publish</StatusButton> : <StatusButton id={event.id} status="draft">Unpublish</StatusButton>}
+                    {event.status === "published" ? <StatusButton id={event.id} status="cancelled" muted>Cancel</StatusButton> : null}
                   </div>
                 </td>
               </tr>
@@ -42,5 +48,16 @@ export function AdminEventTable({ events }: { events: ClassicEvent[] }) {
         </table>
       </div>
     </div>
+  );
+}
+
+function StatusButton({ id, status, muted = false, children }: { id: string; status: "draft" | "published" | "cancelled"; muted?: boolean; children: React.ReactNode }) {
+  return (
+    <form action={setEventStatus}>
+      <input type="hidden" name="id" value={id} />
+      <button name="status" value={status} className={`focus-ring rounded-md border px-2.5 py-1.5 text-xs font-black ${muted ? "border-oxblood/30 text-oxblood" : "border-racing/25 text-racing"}`}>
+        {children}
+      </button>
+    </form>
   );
 }

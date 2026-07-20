@@ -16,7 +16,7 @@ const config: Config = {
         racing: "#0f5132",
         moss: "#54745b",
         oxblood: "#9f2d2d",
-        brass: "#b9852b"
+        brass: "#d9b764"
       },
       boxShadow: {
         soft: "0 16px 45px rgba(24, 36, 47, 0.09)"

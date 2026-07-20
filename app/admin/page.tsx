@@ -1,6 +1,5 @@
 import { Bot, Database, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
-import { AgentTrigger } from "@/components/admin/AgentTrigger";
 import { ButtonLink } from "@/components/ui/Button";
 import { getAdminEvents, getAgentRuns, getReviewQueue } from "@/lib/events";
 
@@ -12,9 +11,8 @@ export default async function AdminPage() {
       <Metric icon={<ShieldCheck className="h-5 w-5" />} label="Review queue" value={queue.length} href="/admin/review" />
       <Metric icon={<Bot className="h-5 w-5" />} label="Agent runs" value={runs.length} href="/admin/agent-runs" />
       <div className="rounded-lg border border-ink/10 bg-paper p-5 shadow-soft md:col-span-3">
-        <h2 className="text-xl font-black">Manual agent trigger</h2>
-        <p className="mt-2 text-sm text-muted">Runs event discovery and reports the result without leaving the dashboard.</p>
-        <AgentTrigger />
+        <h2 className="text-xl font-black">Automated discovery</h2>
+        <p className="mt-2 text-sm text-muted">The secured GitHub workflow discovers UK and European events daily at 03:17 UTC. Recent runs and review items appear above.</p>
       </div>
     </div>
   );

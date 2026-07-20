@@ -10,23 +10,23 @@ export function EventFilters({
 }) {
   const selectedTypes = Array.isArray(searchParams.types) ? searchParams.types : searchParams.types ? [searchParams.types] : [];
   return (
-    <form action="/events" className="rounded-lg border border-ink/10 bg-paper p-4 shadow-soft md:p-5">
+    <form action="/events" className="rounded-xl border border-ink/10 bg-paper/95 p-4 shadow-soft backdrop-blur md:p-5">
       <div className="grid gap-4">
         <label className="block">
-          <span className="mb-1 block text-xs font-black uppercase text-muted">Search</span>
-          <input name="q" defaultValue={searchParams.q ?? ""} aria-label="Search by show, meet, venue or club" className="focus-ring min-h-12 w-full rounded-md border border-ink/15 bg-paper px-3 text-base font-semibold" />
+          <span className="mb-1 block font-condensed text-xs font-black uppercase tracking-wider text-muted">Event or organiser</span>
+          <input name="q" maxLength={120} defaultValue={searchParams.q ?? ""} aria-label="Search by show, meet, venue or club" className="focus-ring min-h-12 w-full rounded-md border border-ink/15 bg-paper px-3 text-base font-semibold" />
         </label>
         <div className="min-w-0">
-          <span className="mb-1 block text-xs font-black uppercase text-muted">Location</span>
+          <span className="mb-1 block font-condensed text-xs font-black uppercase tracking-wider text-muted">Town, city or postcode</span>
           <LocationSearch defaultValue={searchParams.location ?? ""} defaultLatitude={searchParams.lat ?? ""} defaultLongitude={searchParams.lng ?? ""} />
         </div>
         <div className="grid gap-3 sm:grid-cols-[minmax(130px,180px)_minmax(150px,190px)_1fr] sm:items-end">
           <label>
-            <span className="mb-1 block text-xs font-black uppercase text-muted">Radius</span>
+            <span className="mb-1 block font-condensed text-xs font-black uppercase tracking-wider text-muted">Radius</span>
             <RadiusSelector defaultValue={searchParams.radius ?? "50"} />
           </label>
           <label>
-            <span className="mb-1 block text-xs font-black uppercase text-muted">Date</span>
+            <span className="mb-1 block font-condensed text-xs font-black uppercase tracking-wider text-muted">Date</span>
             <select name="date" defaultValue={searchParams.date ?? "all"} className="focus-ring min-h-12 w-full rounded-md border border-ink/15 bg-paper px-3 text-sm font-bold">
               <option value="weekend">This weekend</option>
               <option value="7">Next 7 days</option>
