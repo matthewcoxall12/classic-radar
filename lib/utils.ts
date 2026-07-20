@@ -14,6 +14,16 @@ export function slugify(value: string) {
     .slice(0, 90);
 }
 
+export function safeExternalUrl(value?: string | null) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function formatEventDate(event: { start_date: string; start_time?: string | null; end_date?: string | null }) {
   const date = new Date(`${event.start_date}T12:00:00`);
   const formatted = new Intl.DateTimeFormat("en-GB", {
@@ -40,6 +50,9 @@ export function haversineMiles(a: { latitude: number; longitude: number }, b: { 
   return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-export function locationLabel(event: { venue_name?: string | null; town?: string | null; county?: string | null }) {
-  return [event.venue_name, event.town, event.county].filter(Boolean).join(", ");
+export function locationLabel(event: { venue_name?: string | null; town?: string | null; county?: string | null; country_code?: string | null }) {
+  const country = event.country_code && event.country_code !== "GB"
+    ? new Intl.DisplayNames(["en-GB"], { type: "region" }).of(event.country_code.toUpperCase())
+    : null;
+  return [event.venue_name, event.town, event.county, country].filter(Boolean).join(", ");
 }

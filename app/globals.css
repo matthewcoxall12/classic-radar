@@ -21,7 +21,18 @@ body {
     linear-gradient(180deg, rgba(255, 250, 242, 0.86), rgba(247, 241, 231, 0.96)),
     #f7f1e7;
   color: #18242f;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "DM Sans", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+.font-serif {
+  font-family: "Cormorant Garamond", Georgia, serif;
+}
+
+.font-condensed {
+  font-family: "Barlow Condensed", Arial, sans-serif;
 }
 
 a {
@@ -34,6 +45,73 @@ textarea {
   font: inherit;
 }
 
+.field-control {
+  @apply focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  border-radius: 0.375rem;
+  background: #9f2d2d;
+  padding: 0.75rem 1rem;
+  color: #fffaf2;
+  font-weight: 800;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+#main-content:focus {
+  outline: none;
+}
+
 .focus-ring {
   @apply focus:outline-none focus:ring-2 focus:ring-racing focus:ring-offset-2 focus:ring-offset-cream;
+}
+
+.prose-classicsgo {
+  color: #5d6872;
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.prose-classicsgo h2 {
+  margin-top: 2.25rem;
+  margin-bottom: 0.65rem;
+  color: #18242f;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.prose-classicsgo p,
+.prose-classicsgo ul {
+  max-width: 52rem;
+  margin-bottom: 1rem;
+}
+
+.prose-classicsgo ul {
+  list-style: disc;
+  padding-left: 1.4rem;
+}
+
+.prose-classicsgo a {
+  color: #0f5132;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }

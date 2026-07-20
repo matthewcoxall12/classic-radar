@@ -7,6 +7,7 @@ import {
   eventLinks,
   extractCandidatesFromHtml,
   extractDate,
+  isPublicAddress,
 } from "../scripts/discover-events.mjs";
 
 const nextYear = new Date().getUTCFullYear() + 1;
@@ -28,6 +29,24 @@ test("eventLinks remains on the registered source origin", () => {
     eventLinks(html, "https://official.example/events", 5),
     ["https://official.example/events/classic-rally"],
   );
+});
+
+test("network guard permits public addresses and rejects private ranges", () => {
+  assert.equal(isPublicAddress("8.8.8.8"), true);
+  assert.equal(isPublicAddress("2606:4700:4700::1111"), true);
+  for (const address of [
+    "127.0.0.1",
+    "10.0.0.1",
+    "100.64.0.1",
+    "169.254.169.254",
+    "172.16.0.1",
+    "192.168.1.1",
+    "::1",
+    "fc00::1",
+    "fe80::1",
+    "2001:db8::1",
+    "::ffff:127.0.0.1",
+  ]) assert.equal(isPublicAddress(address), false, address);
 });
 
 test("event categories use the exact public filter taxonomy", () => {

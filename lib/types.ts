@@ -1,4 +1,4 @@
-export type EventStatus = "draft" | "review" | "published" | "rejected" | "expired";
+export type EventStatus = "draft" | "review" | "published" | "rejected" | "expired" | "cancelled";
 
 export type ClassicEvent = {
   id: string;
@@ -14,6 +14,7 @@ export type ClassicEvent = {
   address: string | null;
   town: string | null;
   county: string | null;
+  country_code: string;
   postcode: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -27,6 +28,7 @@ export type ClassicEvent = {
   confidence_score: number;
   is_verified: boolean;
   source_count: number;
+  going_count: number;
   last_checked_at: string | null;
   created_at?: string;
   updated_at?: string;
@@ -62,12 +64,29 @@ export type ReviewQueueItemType = {
   created_at: string;
 };
 
+export type UserSubmission = {
+  id: string;
+  submitted_by: string;
+  event_name: string;
+  event_url: string | null;
+  event_date: string | null;
+  location_text: string;
+  notes: string;
+  status: "pending" | "approved" | "rejected" | "merged";
+  created_at: string;
+  updated_at: string;
+};
+
 export type SourceRegistryEntry = {
   id: string;
   domain: string;
+  source_key?: string;
   source_name: string;
   start_url: string;
   source_type: string;
+  format_hint?: string;
+  country_code?: string;
+  region?: string | null;
   priority_weight: number;
   crawl_frequency?: string | null;
   is_active: boolean;

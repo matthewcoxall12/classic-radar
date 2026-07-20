@@ -1,34 +1,38 @@
-import { runSourceNow, upsertSourceRegistryEntry } from "@/app/admin/settings/actions";
+import { upsertSourceRegistryEntry } from "@/app/admin/settings/actions";
 import type { SourceRegistryEntry } from "@/lib/types";
 
 const sourceTypes = [
-  "official_organiser",
-  "venue_or_museum",
-  "classic_event_calendar",
-  "ticketing_platform",
-  "club_site",
-  "forum",
-  "facebook",
+  "aggregator",
+  "club",
+  "museum",
+  "motorsport",
+  "organiser",
+  "council",
+  "marketplace",
   "social",
-  "council_or_whats_on",
-  "search_result",
-  "unknown"
+  "federation"
 ];
+
+const formats = ["html"];
 
 export function SourceRegistryManager({ entries }: { entries: SourceRegistryEntry[] }) {
   return (
     <div className="grid gap-5">
       <form action={upsertSourceRegistryEntry} className="grid gap-3 rounded-lg border border-ink/10 bg-paper p-4 shadow-soft">
         <h2 className="text-xl font-black">Add source domain</h2>
-        <div className="grid gap-3 md:grid-cols-[1fr_1fr_180px_130px]">
-          <label className="grid gap-1 text-sm font-bold">Domain<input name="domain" required className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3" /></label>
+        <div className="grid gap-3 md:grid-cols-[1fr_180px_130px]">
           <label className="grid gap-1 text-sm font-bold">Source name<input name="source_name" className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3" /></label>
           <label className="grid gap-1 text-sm font-bold">Type<select name="source_type" className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3">{sourceTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
           <label className="grid gap-1 text-sm font-bold">Weight<input name="priority_weight" type="number" min="0" max="100" defaultValue="50" className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3" /></label>
         </div>
-        <div className="grid gap-3 md:grid-cols-[1fr_180px]">
+        <div className="grid gap-3 md:grid-cols-[1fr_150px_150px]">
           <label className="grid gap-1 text-sm font-bold">Start URL<input name="start_url" type="url" required className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3" /></label>
-          <label className="grid gap-1 text-sm font-bold">Frequency<select name="crawl_frequency" defaultValue="daily" className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3"><option>daily</option><option>weekly</option></select></label>
+          <label className="grid gap-1 text-sm font-bold">Format<select name="format_hint" defaultValue="html" className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3">{formats.map((format) => <option key={format}>{format}</option>)}</select></label>
+          <label className="grid gap-1 text-sm font-bold">Frequency<select name="crawl_frequency" defaultValue="daily" className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3"><option>six_hourly</option><option>daily</option><option>weekly</option></select></label>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[130px_1fr]">
+          <label className="grid gap-1 text-sm font-bold">Country code<input name="country_code" defaultValue="GB" maxLength={2} className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3 uppercase" /></label>
+          <label className="grid gap-1 text-sm font-bold">Region (optional)<input name="region" className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3" /></label>
         </div>
         <label className="grid gap-1 text-sm font-bold">Notes<textarea name="notes" rows={2} className="focus-ring rounded-md border border-ink/15 bg-paper px-3 py-2" /></label>
         <div className="flex flex-wrap gap-4">
@@ -49,7 +53,6 @@ export function SourceRegistryManager({ entries }: { entries: SourceRegistryEntr
                 <th className="px-4 py-3">Last checked</th>
                 <th className="px-4 py-3">Last error</th>
                 <th className="px-4 py-3">Notes</th>
-                <th className="px-4 py-3">Run</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink/10">
@@ -62,12 +65,6 @@ export function SourceRegistryManager({ entries }: { entries: SourceRegistryEntr
                   <td className="px-4 py-3 text-muted">{entry.last_checked_at ? new Date(entry.last_checked_at).toLocaleString("en-GB") : "Never"}</td>
                   <td className="px-4 py-3 text-oxblood">{entry.last_error}</td>
                   <td className="px-4 py-3 text-muted">{entry.notes}</td>
-                  <td className="px-4 py-3">
-                    <form action={runSourceNow}>
-                      <input type="hidden" name="sourceId" value={entry.id} />
-                      <button className="rounded-md border border-ink/15 px-3 py-2 text-xs font-black">Run source</button>
-                    </form>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -79,15 +76,20 @@ export function SourceRegistryManager({ entries }: { entries: SourceRegistryEntr
         {entries.map((entry) => (
           <form key={entry.id} action={upsertSourceRegistryEntry} className="grid gap-3 rounded-lg border border-ink/10 bg-paper p-4 shadow-soft">
             <input type="hidden" name="id" value={entry.id} />
-            <div className="grid gap-3 md:grid-cols-[1fr_1fr_180px_130px]">
-              <label className="grid gap-1 text-sm font-bold">Domain<input name="domain" defaultValue={entry.domain} required className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3" /></label>
+            <input type="hidden" name="source_key" value={entry.source_key} />
+            <div className="grid gap-3 md:grid-cols-[1fr_180px_130px]">
               <label className="grid gap-1 text-sm font-bold">Source name<input name="source_name" defaultValue={entry.source_name ?? ""} className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3" /></label>
               <label className="grid gap-1 text-sm font-bold">Type<select name="source_type" defaultValue={entry.source_type ?? "unknown"} className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3">{sourceTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
               <label className="grid gap-1 text-sm font-bold">Weight<input name="priority_weight" type="number" min="0" max="100" defaultValue={entry.priority_weight} className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3" /></label>
             </div>
-            <div className="grid gap-3 md:grid-cols-[1fr_180px]">
+            <div className="grid gap-3 md:grid-cols-[1fr_150px_150px]">
               <label className="grid gap-1 text-sm font-bold">Start URL<input name="start_url" type="url" defaultValue={entry.start_url} required className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3" /></label>
-              <label className="grid gap-1 text-sm font-bold">Frequency<select name="crawl_frequency" defaultValue={entry.crawl_frequency ?? "daily"} className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3"><option>daily</option><option>weekly</option></select></label>
+              <label className="grid gap-1 text-sm font-bold">Format<select name="format_hint" defaultValue={entry.format_hint ?? "html"} className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3">{formats.map((format) => <option key={format}>{format}</option>)}</select></label>
+              <label className="grid gap-1 text-sm font-bold">Frequency<select name="crawl_frequency" defaultValue={entry.crawl_frequency ?? "daily"} className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3"><option>six_hourly</option><option>daily</option><option>weekly</option></select></label>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-[130px_1fr]">
+              <label className="grid gap-1 text-sm font-bold">Country code<input name="country_code" defaultValue={entry.country_code ?? "GB"} maxLength={2} className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3 uppercase" /></label>
+              <label className="grid gap-1 text-sm font-bold">Region (optional)<input name="region" defaultValue={entry.region ?? ""} className="focus-ring min-h-11 rounded-md border border-ink/15 bg-paper px-3" /></label>
             </div>
             <label className="grid gap-1 text-sm font-bold">Notes<textarea name="notes" rows={2} defaultValue={entry.notes ?? ""} className="focus-ring rounded-md border border-ink/15 bg-paper px-3 py-2" /></label>
             <div className="flex items-center justify-between gap-3">
