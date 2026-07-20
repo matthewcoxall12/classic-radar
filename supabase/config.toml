@@ -2,3 +2,9 @@ project_id = "classic-radar"
 
 [functions.event-discovery-agent]
 verify_jwt = false
+
+# GitHub Actions presents a third-party OIDC JWT. The Supabase gateway cannot
+# validate that issuer, so the function performs strict issuer, audience,
+# repository, owner, main-ref and exact-workflow checks itself.
+[functions.ingest-events]
+verify_jwt = false
