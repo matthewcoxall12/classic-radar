@@ -11,7 +11,7 @@ const USER_AGENT =
   "ClassicsGo-Discovery/1.0 (+https://classicsgo.com; support@classicsgo.com)";
 const MAX_BYTES = 2_000_000;
 const EVENT_WORDS =
-  /\b(classic|vintage|historic|heritage|retro|motor|motoring|car|cars|vehicle|vehicles|autojumble|rally|road run|hillclimb|hill climb|concours|auto|automobile|show|meet|festival|race|racing)\b/i;
+  /\b(classic|vintage|historic|heritage|retro|motor|motoring|car|cars|vehicle|vehicles|hot rod|autojumble|rally|road run|road tour|tour|trial|sprint|track day|hillclimb|hill climb|concours|auto|automobile|show|meet|gathering|festival|race|racing)\b/i;
 const GENERIC_TITLES =
   /^(events?|what(?:'|’)s on|calendar|home|welcome|motorsport|latest events?)$/i;
 const PRIVATE_IPV4 =
@@ -426,7 +426,8 @@ export function extractCandidatesFromHtml(html, pageUrl, source) {
 }
 
 export function eventLinks(html, baseUrl, limit = 3) {
-  const origin = new URL(baseUrl).origin;
+  const base = new URL(baseUrl);
+  const origin = base.origin;
   const links = new Map();
   const pattern = /<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   for (const match of html.matchAll(pattern)) {
@@ -437,10 +438,21 @@ export function eventLinks(html, baseUrl, limit = 3) {
       !EVENT_WORDS.test(label + " " + url) ||
       /\/login|\/account|\/basket|\/cart|privacy|terms|cookie|wp-json|\/feed\/?$/i.test(url)
     ) continue;
-    links.set(url, label);
-    if (links.size >= limit) break;
+    const parsed = new URL(url);
+    if (parsed.pathname === base.pathname && parsed.search === base.search) continue;
+    const generic = /\/(?:events?|whats?-on|calendar)\/?$/i.test(parsed.pathname) ||
+      /\/(?:category|tag|event-type|news|blog|archive)\//i.test(parsed.pathname);
+    const detail = /\/(?:events?|gbcj-event)\/[^/]+\/?$/i.test(parsed.pathname) ||
+      /(?:^|[?&])event(?:id)?=/i.test(parsed.search);
+    const dated = /\b(?:20\d{2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(label);
+    const score = (detail ? 6 : 0) + (dated ? 3 : 0) + (generic ? -5 : 0);
+    const existing = links.get(url);
+    if (!existing || score > existing.score) links.set(url, { label, score });
   }
-  return [...links.keys()];
+  return [...links.entries()]
+    .sort((left, right) => right[1].score - left[1].score)
+    .slice(0, limit)
+    .map(([url]) => url);
 }
 
 function robotsAllowsText(text, pathname) {
@@ -592,18 +604,9 @@ export async function processSource(source, detailLimit) {
       errors: [source.key + ": " + message],
     };
   }
-  const candidates = [];
-  for (const page of pages) {
-    if (page.url === pages[0].url) {
-      candidates.push(
-        ...jsonLdObjects(page.text)
-          .map((event) => jsonLdCandidate(event, page.url, source))
-          .filter(Boolean),
-      );
-    } else {
-      candidates.push(...extractCandidatesFromHtml(page.text, page.url, source));
-    }
-  }
+  const candidates = pages.flatMap((page) =>
+    extractCandidatesFromHtml(page.text, page.url, source)
+  );
   return {
     sourceKey: source.key,
     succeeded: true,
@@ -713,7 +716,10 @@ function localDryRunCatalog() {
 
 export async function main() {
   const dryRun = String(process.env.DISCOVERY_DRY_RUN || "").toLowerCase() === "true";
-  const catalog = dryRun
+  const hasGitHubOidc = Boolean(
+    process.env.ACTIONS_ID_TOKEN_REQUEST_URL && process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN,
+  );
+  const catalog = dryRun && !hasGitHubOidc
     ? localDryRunCatalog()
     : (await ingest({ phase: "catalog" })).catalog || [];
   const sources = selectedSources(catalog);

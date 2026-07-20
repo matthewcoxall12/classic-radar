@@ -8,6 +8,7 @@ on:
       - "scripts/discover-events.mjs"
       - "tests/discovery-worker.test.mjs"
       - "supabase/functions/ingest-events/**"
+      - "supabase/migrations/*event_source*.sql"
   schedule:
     - cron: "17 3 * * *"
   workflow_dispatch:
@@ -42,7 +43,7 @@ jobs:
     timeout-minutes: 35
     env:
       DISCOVERY_INGEST_URL: https://rnayhhsurmztrohtftqo.supabase.co/functions/v1/ingest-events
-      DISCOVERY_SOURCE_LIMIT: ${{ github.event_name == 'push' && '5' || github.event_name == 'schedule' && '69' || inputs.source_limit || '8' }}
+      DISCOVERY_SOURCE_LIMIT: ${{ github.event_name == 'push' && '12' || github.event_name == 'schedule' && '200' || inputs.source_limit || '12' }}
       DISCOVERY_SOURCE_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.source_key || '' }}
       DISCOVERY_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
       DISCOVERY_DETAIL_LIMIT: "3"

@@ -1,4 +1,5 @@
 import { geocodeLocation, hasValidCoordinatePair } from "@/lib/geocoding";
+import { eventSearchTerms, eventTextMatches } from "@/lib/event-search";
 import { createClient } from "@/lib/supabase/server";
 import type { AgentRun, ClassicEvent, ReviewQueueItemType, SourceRegistryEntry } from "@/lib/types";
 
@@ -52,11 +53,15 @@ function isoDate(date: Date) {
 export async function getEvents(params: EventSearchParams = {}, limit = 200): Promise<ClassicEvent[]> {
   const range = dateRange(params.date);
   const supabase = await createClient();
-  const origin = hasValidCoordinatePair(params.lat, params.lng)
-    ? { latitude: Number(params.lat), longitude: Number(params.lng), label: "Current location" }
-    : await geocodeLocation(params.location);
-  const isLocalSearch = Boolean(params.location?.trim() || hasValidCoordinatePair(params.lat, params.lng));
+  const countryWide = params.radius === "uk" || params.radius === "europe";
+  const isLocalSearch = !countryWide && Boolean(params.location?.trim() || hasValidCoordinatePair(params.lat, params.lng));
+  const origin = !isLocalSearch
+    ? null
+    : hasValidCoordinatePair(params.lat, params.lng)
+      ? { latitude: Number(params.lat), longitude: Number(params.lng), label: "Current location" }
+      : await geocodeLocation(params.location);
   if (isLocalSearch && !origin) return [];
+  const searchTerms = eventSearchTerms(params.q);
 
   let events: ClassicEvent[] = [];
   const radius = Number(params.radius || 50);
@@ -88,9 +93,8 @@ export async function getEvents(params: EventSearchParams = {}, limit = 200): Pr
     if (range.end) query = query.lte("start_date", range.end);
     if (params.types?.length) query = query.in("event_type", params.types);
     if (params.radius === "uk") query = query.eq("country_code", "GB");
-    const databaseText = params.q?.trim().replace(/[^\p{L}\p{N}\s&'-]/gu, " ").replace(/\s+/g, " ").slice(0, 120);
-    if (databaseText) {
-      query = query.or(`title.ilike.%${databaseText}%,description.ilike.%${databaseText}%,venue_name.ilike.%${databaseText}%,town.ilike.%${databaseText}%,county.ilike.%${databaseText}%,organiser_name.ilike.%${databaseText}%`);
+    for (const term of searchTerms) {
+      query = query.or(`title.ilike.%${term}%,description.ilike.%${term}%,event_type.ilike.%${term}%,venue_name.ilike.%${term}%,town.ilike.%${term}%,county.ilike.%${term}%,organiser_name.ilike.%${term}%`);
     }
     const { data, error } = await query;
     if (error || !data) {
@@ -100,12 +104,12 @@ export async function getEvents(params: EventSearchParams = {}, limit = 200): Pr
     events = data as ClassicEvent[];
   }
 
-  const text = params.q?.trim().toLocaleLowerCase("en-GB");
-  if (text) {
+  if (searchTerms.length) {
     events = events.filter((event) =>
-      [event.title, event.description, event.venue_name, event.town, event.county, event.event_type, event.organiser_name]
-        .filter(Boolean)
-        .some((value) => value!.toLocaleLowerCase("en-GB").includes(text))
+      eventTextMatches(
+        [event.title, event.description, event.venue_name, event.town, event.county, event.event_type, event.organiser_name],
+        searchTerms
+      )
     );
   }
   return events;
