@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  typedRoutes: false,
   poweredByHeader: false,
   async redirects() {
     return [
@@ -9,8 +8,8 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         has: [{ type: "host", value: "www.classicsgo.com" }],
         destination: "https://classicsgo.com/:path*",
-        permanent: true
-      }
+        permanent: true,
+      },
     ];
   },
   async headers() {
@@ -32,20 +31,20 @@ const nextConfig: NextConfig = {
               "object-src 'none'",
               "frame-ancestors 'none'",
               "form-action 'self'",
-              "script-src 'self' 'unsafe-inline' https://accounts.google.com",
-              "style-src 'self' 'unsafe-inline' https://accounts.google.com",
+              "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+              "style-src 'self' 'unsafe-inline'",
               "font-src 'self' data:",
-              "img-src 'self' data: blob: https://accounts.google.com https://*.googleusercontent.com",
-              "connect-src 'self' https://rnayhhsurmztrohtftqo.supabase.co wss://rnayhhsurmztrohtftqo.supabase.co https://accounts.google.com",
-              "frame-src https://accounts.google.com",
+              "img-src 'self' data: blob: https://*.googleusercontent.com https:",
+              "connect-src 'self' https://rnayhhsurmztrohtftqo.supabase.co wss://rnayhhsurmztrohtftqo.supabase.co https://challenges.cloudflare.com",
+              "frame-src https://challenges.cloudflare.com",
               "worker-src 'self' blob:",
-              "upgrade-insecure-requests"
-            ].join("; ")
-          }
-        ]
-      }
+              "upgrade-insecure-requests",
+            ].join("; "),
+          },
+        ],
+      },
     ];
-  }
+  },
 };
 
 export default nextConfig;

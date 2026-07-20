@@ -1,14 +1,35 @@
 import type { MetadataRoute } from "next";
-import { getEvents } from "@/lib/events";
-import { siteUrl } from "@/lib/site";
+import { listIndexableEvents } from "@/lib/public-events";
+import { publicSiteUrl } from "@/lib/site-url";
+
+export const dynamic = "force-dynamic";
+
+function validLastModified(value: string | undefined, fallback: Date) {
+  if (!value) return fallback;
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf()) ? fallback : date;
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = siteUrl();
-  const now = new Date();
-  const routes = ["", "/events", "/membership", "/clubs", "/about", "/contact", "/privacy", "/terms"];
-  const events = await getEvents({ radius: "europe", date: "all" }, 1000);
+  const origin = publicSiteUrl().origin;
+  const updated = new Date("2026-07-19T00:00:00Z");
+  const events = await listIndexableEvents(5_000);
+  const pages: MetadataRoute.Sitemap = [
+    { url: `${origin}/`, lastModified: updated, changeFrequency: "daily", priority: 1 },
+    { url: `${origin}/membership`, lastModified: updated, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${origin}/clubs`, lastModified: updated, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${origin}/submit-event`, lastModified: updated, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${origin}/privacy`, lastModified: updated, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${origin}/terms`, lastModified: updated, changeFrequency: "yearly", priority: 0.3 },
+  ];
+
   return [
-    ...routes.map((route) => ({ url: new URL(route || "/", base).toString(), lastModified: now, changeFrequency: route === "" || route === "/events" ? "daily" as const : "monthly" as const, priority: route === "" ? 1 : route === "/events" ? 0.9 : 0.6 })),
-    ...events.map((event) => ({ url: new URL(`/events/${event.slug}`, base).toString(), lastModified: new Date(event.updated_at || event.last_checked_at || now), changeFrequency: "weekly" as const, priority: 0.7 }))
+    ...pages,
+    ...events.map((event) => ({
+      url: `${origin}/events/${event.id}`,
+      lastModified: validLastModified(event.updatedAt, updated),
+      changeFrequency: "weekly" as const,
+      priority: event.featured ? 0.8 : 0.7,
+    })),
   ];
 }

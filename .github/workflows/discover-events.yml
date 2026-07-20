@@ -9,7 +9,7 @@ on:
       - "tests/discovery-worker.test.mjs"
       - "supabase/functions/ingest-events/**"
   schedule:
-    - cron: "17 3 * * *"
+    - cron: "17 */6 * * *"
   workflow_dispatch:
     inputs:
       source_limit:
