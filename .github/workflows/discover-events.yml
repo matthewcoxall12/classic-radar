@@ -1,0 +1,61 @@
+name: Discover classic-car events
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/discover-events.yml"
+      - "scripts/discover-events.mjs"
+      - "tests/discovery-worker.test.mjs"
+      - "supabase/functions/ingest-events/**"
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      source_limit:
+        description: "Maximum registered sources to scan"
+        required: true
+        default: "8"
+        type: string
+      source_key:
+        description: "Optional exact source key"
+        required: false
+        default: ""
+        type: string
+      dry_run:
+        description: "Scout without writing candidates"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: classicsgo-event-discovery
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      DISCOVERY_INGEST_URL: https://rnayhhsurmztrohtftqo.supabase.co/functions/v1/ingest-events
+      DISCOVERY_SOURCE_LIMIT: ${{ github.event_name == 'push' && '5' || github.event_name == 'schedule' && '69' || inputs.source_limit || '8' }}
+      DISCOVERY_SOURCE_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.source_key || '' }}
+      DISCOVERY_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+      DISCOVERY_DETAIL_LIMIT: "3"
+      DISCOVERY_CONCURRENCY: "5"
+    steps:
+      - name: Check out the trusted main-branch workflow
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Validate discovery code
+        run: |
+          node --version
+          node --check scripts/discover-events.mjs
+          node --test tests/discovery-worker.test.mjs
+
+      - name: Scout registered sources into private review
+        run: node scripts/discover-events.mjs

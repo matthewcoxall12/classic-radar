@@ -13,6 +13,7 @@ The app works locally without Supabase keys for UI development. Real event disco
 - Saved events and reminder preference-ready schema
 - Missing event submissions routed to admin review
 - Protected admin dashboard for event management, review queue and agent logs
+- GitHub Actions discovery authenticated to Supabase with short-lived OIDC
 - Vercel API discovery agent at `/api/agent/run`
 - Real source-first crawling from Supabase `source_registry`
 - Supabase migrations for schema, RLS, seed data and cron setup
@@ -117,6 +118,24 @@ https://YOUR_DOMAIN/auth/callback
 
 ## Agent API
 
+Production discovery runs from `.github/workflows/discover-events.yml`. The
+workflow requests a short-lived GitHub OIDC token for the
+`classicsgo-ingest` audience; no Supabase service key or shared ingestion
+secret is stored in GitHub. The Edge Function accepts only this repository,
+owner ID, exact workflow path, and `refs/heads/main`.
+
+The workflow reads the live `source_registry`, respects `robots.txt`, bounds
+responses and redirects, extracts structured event data first, deduplicates
+candidates, and stores provenance. Every new machine candidate is saved with
+`events.status = 'review'`, `is_verified = false`, and a pending
+`review_queue` row. Only an authenticated human review may publish it.
+
+Pushes that change the discovery pipeline run a five-source canary. The daily
+03:17 UTC schedule covers the full registry; manual runs can select a source,
+limit the scan, or run without writes.
+
+The older application route below remains available for local development.
+
 The production discovery agent runs in the Next.js route `/api/agent/run` and is designed for Vercel Cron.
 
 Manual test:
@@ -197,14 +216,8 @@ Confidence scoring lives in `lib/agent/confidence.ts`.
 
 The score starts at half the source weight, then adds confidence for exact dates, venue/town, postcode, booking URL, recognised event type, multiple sources, title match and images. It subtracts for missing date/location, vague terms, expired-looking pages and unrelated event types.
 
-Auto-publish requires:
-
-- confidence `>= 75`
-- `start_date`
-- town, venue or postcode
-- source URL
-
-Everything else goes to `review_queue`.
+Confidence helps editors prioritise the queue, but does not grant publication
+authority. All machine-discovered events go to `review_queue`.
 
 ## Review Queue
 
@@ -273,8 +286,8 @@ The Vercel API agent:
 9. Applies source registry trust weighting.
 10. Scores confidence.
 11. Deduplicates by title, date, town and coordinates.
-12. Publishes strong events at confidence `>= 75`.
-13. Sends uncertain events to `review_queue`.
+12. Materialises machine candidates with `status = review`.
+13. Sends every new machine candidate to `review_queue` for human approval.
 14. Stores every source URL in `event_sources`.
 15. Merges duplicate sources into existing events.
 16. Marks past events as expired.
