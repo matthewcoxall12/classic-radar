@@ -1,0 +1,40 @@
+name: Materialise ClassicsGo release
+
+on:
+  push:
+    branches:
+      - codex/classicsgo-production
+    paths:
+      - ".release/classicsgo-release.tar.gz"
+      - ".github/workflows/bootstrap-classicsgo-release.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: classicsgo-release-materialisation
+  cancel-in-progress: false
+
+jobs:
+  materialise:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out release branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Replace snapshot with verified release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/classicsgo-release
+          tar -xzf .release/classicsgo-release.tar.gz -C /tmp/classicsgo-release
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf -- {} +
+          cp -a /tmp/classicsgo-release/. .
+          git config user.name "ClassicsGo Release"
+          git config user.email "notifications@classicsgo.com"
+          git add -A
+          git commit -m "Build ClassicsGo production platform"
+          git push origin HEAD:codex/classicsgo-production
