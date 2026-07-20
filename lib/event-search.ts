@@ -51,6 +51,7 @@ export function eventTextMatches(values: Array<string | null | undefined>, terms
 
 function validCoordinatePair(latitude: string | string[] | undefined, longitude: string | string[] | undefined) {
   if (typeof latitude !== "string" || typeof longitude !== "string") return false;
+  if (!latitude.trim() || !longitude.trim()) return false;
   const lat = Number(latitude);
   const lng = Number(longitude);
   return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;

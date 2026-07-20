@@ -14,7 +14,7 @@ test("an untouched event page waits for search input", () => {
 });
 
 test("a keyword-only quick search falls back to UK-wide results", () => {
-  assert.deepEqual(resolveEventSearch({ q: "German", radius: "50", date: "30" }), {
+  assert.deepEqual(resolveEventSearch({ q: "German", location: "", lat: "", lng: "", radius: "50", date: "30" }), {
     submitted: true,
     localSearch: false,
     radius: "50",
