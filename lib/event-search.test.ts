@@ -54,4 +54,9 @@ test("keyword matching normalises punctuation and supports multiple terms", () =
   assert.deepEqual(eventSearchTerms(" Cars & Coffee!  German cars "), ["cars", "coffee", "german"]);
   assert.equal(eventTextMatches(["German Cars & Coffee", "Gaydon"], ["german", "coffee"]), true);
   assert.equal(eventTextMatches(["German Cars & Coffee", "Gaydon"], ["porsche", "coffee"]), false);
+  assert.equal(eventTextMatches([
+    "The Ultimate German Car Meet",
+    "A family-friendly gathering with club and independent displays.",
+    "Club meet"
+  ], ["club", "meet"]), true);
 });

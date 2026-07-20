@@ -33,20 +33,24 @@ export function resolveEventSearch(query: EventSearchQuery): EventSearchPlan {
 
 export function eventSearchTerms(value?: string) {
   return [...new Set(
-    String(value ?? "")
-      .normalize("NFKC")
-      .toLocaleLowerCase("en-GB")
-      .replace(/[^\p{L}\p{N}]+/gu, " ")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
+    normalisedWords(value)
   )].slice(0, 8);
 }
 
 export function eventTextMatches(values: Array<string | null | undefined>, terms: string[]) {
   if (!terms.length) return true;
-  const searchable = eventSearchTerms(values.filter(Boolean).join(" ")).join(" ");
+  const searchable = normalisedWords(values.filter(Boolean).join(" ")).join(" ");
   return terms.every((term) => searchable.includes(term));
+}
+
+function normalisedWords(value?: string) {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .toLocaleLowerCase("en-GB")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 }
 
 function validCoordinatePair(latitude: string | string[] | undefined, longitude: string | string[] | undefined) {
