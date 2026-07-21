@@ -6,6 +6,7 @@ import {
 import { safeRelativeReturnPath } from "@/lib/auth-return-path";
 import { RETURN_COOKIE, siteOrigin } from "@/lib/auth-security";
 import {
+  bestEffortWelcomeEmail,
   createSupabaseRouteClient,
   passwordAuthEnabled,
   principalFromSupabaseUser,
@@ -47,6 +48,7 @@ export async function GET(request: Request) {
       const principal = principalFromSupabaseUser(data.user, "email");
       const user = await resolveAuthPrincipal(principal);
       await createAppSession(user, request);
+      await bestEffortWelcomeEmail(client, data.user);
     return Response.redirect(`${siteOrigin(request)}${returnTo}`, 303);
   } catch {
     return Response.redirect(

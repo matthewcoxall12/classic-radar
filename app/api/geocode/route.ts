@@ -3,8 +3,8 @@ import {
   checkDurableAuthRateLimit,
   sha256,
 } from "@/lib/auth-security";
-import { ensureDatabase } from "@/lib/database";
 import { getRuntimeEnv } from "@/lib/runtime-env";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type NominatimResult = {
   display_name: string;
@@ -64,16 +64,21 @@ export async function GET(request: Request) {
     );
   }
 
-  const db = await ensureDatabase();
+  const supabase = createSupabaseAdminClient();
   const now = Math.floor(Date.now() / 1000);
   const queryHash = await sha256(cacheKey);
-  const cached = await db
-    .prepare(
-      `SELECT label, latitude, longitude FROM geocode_cache
-       WHERE cache_key = ? AND expires_at > ?`,
-    )
-    .bind(queryHash, now)
-    .first<CachedResult>();
+  const { data: cached, error: cacheError } = await supabase
+    .from("geocode_cache")
+    .select("label, latitude, longitude")
+    .eq("cache_key", queryHash)
+    .gt("expires_at", now)
+    .maybeSingle<CachedResult>();
+  if (cacheError) {
+    return Response.json(
+      { error: "Location lookup is temporarily unavailable." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   if (cached) {
     return Response.json(cached, {
       headers: { "Cache-Control": "public, max-age=86400" },
@@ -101,20 +106,12 @@ export async function GET(request: Request) {
     // This one row intentionally stores milliseconds in expires_at; all other
     // rate-limit rows use scoped keys and epoch seconds.
     const leaseNow = Date.now();
-    const globalLease = await db
-      .prepare(
-        `INSERT INTO auth_rate_limits (bucket_key, hits, expires_at)
-         VALUES ('geocode-global-lease', 1, ?)
-         ON CONFLICT(bucket_key) DO UPDATE SET
-           hits = 1,
-           expires_at = excluded.expires_at,
-           updated_at = CURRENT_TIMESTAMP
-         WHERE auth_rate_limits.expires_at <= ?
-         RETURNING expires_at`,
-      )
-      .bind(leaseNow + 1_050, leaseNow)
-      .first<{ expires_at: number }>();
-    if (!globalLease) {
+    const { data: globalLease, error: leaseError } = await supabase.rpc(
+      "claim_geocode_lease",
+      { p_now_ms: leaseNow, p_duration_ms: 1_050 },
+    );
+    if (leaseError) throw leaseError;
+    if (globalLease !== true) {
       return Response.json(
         { error: "Location search is busy. Please wait a second and try again." },
         { status: 429, headers: { "Retry-After": "1" } },
@@ -156,28 +153,27 @@ export async function GET(request: Request) {
     ) {
       throw new Error("The geocoder returned an invalid location.");
     }
-    await db.batch([
-      db
-        .prepare(
-          `INSERT INTO geocode_cache (
-             cache_key, label, latitude, longitude, provider, expires_at
-           ) VALUES (?, ?, ?, ?, 'nominatim-compatible', ?)
-           ON CONFLICT(cache_key) DO UPDATE SET
-             label = excluded.label,
-             latitude = excluded.latitude,
-             longitude = excluded.longitude,
-             provider = excluded.provider,
-             expires_at = excluded.expires_at`,
-        )
-        .bind(
-          queryHash,
-          value.label,
-          value.latitude,
-          value.longitude,
-          now + 30 * 24 * 60 * 60,
-        ),
-      db.prepare(`DELETE FROM geocode_cache WHERE expires_at < ?`).bind(now),
-    ]);
+    const { error: cacheWriteError } = await supabase.from("geocode_cache").upsert(
+      {
+        cache_key: queryHash,
+        label: value.label,
+        latitude: value.latitude,
+        longitude: value.longitude,
+        provider: "nominatim-compatible",
+        expires_at: now + 30 * 24 * 60 * 60,
+      },
+      { onConflict: "cache_key" },
+    );
+    if (cacheWriteError) throw cacheWriteError;
+    const { error: cacheCleanupError } = await supabase
+      .from("geocode_cache")
+      .delete()
+      .lt("expires_at", now);
+    if (cacheCleanupError) {
+      console.warn("Expired geocode cache cleanup failed", {
+        code: cacheCleanupError.code,
+      });
+    }
     return Response.json(value, {
       headers: { "Cache-Control": "public, max-age=86400" },
     });

@@ -17,6 +17,7 @@ import {
 } from "@/lib/password-auth";
 import { readJsonBody, RequestError } from "@/lib/request-safety";
 import {
+  bestEffortWelcomeEmail,
   createSupabaseRouteClient,
   passwordAuthEnabled,
   principalFromSupabaseUser,
@@ -97,8 +98,9 @@ export async function POST(request: Request) {
       const principal = principalFromSupabaseUser(data.user, "password");
       await assertReauthenticationPrincipal(principal);
       const user = await resolveAuthPrincipal(principal);
-      await assertReauthenticationMember(user);
+      const reauthenticated = await assertReauthenticationMember(user);
       await createAppSession(user, request);
+      if (!reauthenticated) await bestEffortWelcomeEmail(client, data.user);
 
     return Response.json(
         { ok: true, data: { redirectTo: returnTo } },

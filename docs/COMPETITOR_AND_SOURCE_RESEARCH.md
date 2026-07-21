@@ -60,7 +60,7 @@ competitor's implementation.
   explains that place IDs are an exception to wider caching restrictions; the
   broader [Maps JavaScript policy](https://developers.google.com/maps/documentation/javascript/policies)
   also imposes storage, display and attribution conditions. Those boundaries do
-  not fit a durable, independently published D1 event/provenance directory.
+  not fit a durable, independently published Supabase event/provenance directory.
   Places may be reconsidered only for a separately designed, policy-compliant
   location UX—not as an event database.
 - **Broad Eventbrite discovery:** not integrated. The authorised-organisation

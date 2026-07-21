@@ -16,9 +16,16 @@ export async function GET(request: Request) {
   if (!user) {
     return Response.redirect(`${siteOrigin(request)}${publicSignInPath(returnTo)}`, 303);
   }
-  await beginReauthentication(user);
-  return Response.redirect(
-    `${siteOrigin(request)}/sign-in?reauth=1&return_to=${encodeURIComponent(returnTo)}`,
-    303,
-  );
+  try {
+    await beginReauthentication(user);
+    return Response.redirect(
+      `${siteOrigin(request)}/sign-in?reauth=1&return_to=${encodeURIComponent(returnTo)}`,
+      303,
+    );
+  } catch {
+    return Response.redirect(
+      `${siteOrigin(request)}/sign-in?error=setup_pending&return_to=${encodeURIComponent(returnTo)}`,
+      303,
+    );
+  }
 }

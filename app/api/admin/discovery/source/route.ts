@@ -1,27 +1,13 @@
 import { requireAdminApiUser } from "@/lib/admin-auth";
+import { proposedEventId, type ReviewQueueRow, type SourceRegistryRow } from "@/lib/admin-discovery-supabase";
 import { AuthSecurityError, checkDurableAuthRateLimit } from "@/lib/auth-security";
-import { ensureDatabase } from "@/lib/database";
-import { ensureDiscoveryCatalog } from "@/lib/discovery/catalog-store";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { readJsonBody, RequestError } from "@/lib/request-safety";
 
 export const dynamic = "force-dynamic";
 
 const sourceStatuses = ["pending", "active", "paused", "revoked"] as const;
-const sourceTrustLevels = ["unverified", "organizer", "partner", "official"] as const;
-
-type SourceStatus = (typeof sourceStatuses)[number];
-type SourceTrust = (typeof sourceTrustLevels)[number];
-
-type SourceRow = {
-  id: string;
-  status: SourceStatus;
-  trust_level: SourceTrust;
-  updated_at: string;
-};
-
-type SourceRelationRow = {
-  id: string;
-};
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function noStoreJson(body: unknown, init: ResponseInit = {}) {
   const headers = new Headers(init.headers);
@@ -42,158 +28,96 @@ function routeError(error: unknown) {
       { status: error.status },
     );
   }
+  console.error("[admin-discovery-source] Supabase operation failed", {
+    errorClass: error instanceof Error ? error.name : "UnknownError",
+  });
   return noStoreJson(
-    {
-      ok: false,
-      error: {
-        code: "SOURCE_CONTROL_FAILED",
-        message: "The source-control transition could not be completed safely.",
-      },
-    },
+    { ok: false, error: { code: "SOURCE_CONTROL_FAILED", message: "The source-control transition could not be completed safely." } },
     { status: 500 },
   );
+}
+
+function displayStatus(source: Pick<SourceRegistryRow, "is_active">) {
+  return source.is_active ? "active" : "paused";
 }
 
 export async function GET(request: Request) {
   try {
     await requireAdminApiUser(request);
-    await ensureDiscoveryCatalog();
     const params = new URL(request.url).searchParams;
     const requestedStatus = params.get("status") ?? "all";
-    const query = (params.get("q") ?? "").normalize("NFC").trim();
+    const search = (params.get("q") ?? "").normalize("NFC").trim();
     const requestedLimit = Number(params.get("limit") ?? "50");
     const cursorValue = params.get("cursor") ?? "";
     if (
-      (requestedStatus !== "all" && !sourceStatuses.includes(requestedStatus as SourceStatus)) ||
-      query.length > 120 ||
+      (requestedStatus !== "all" && !sourceStatuses.includes(requestedStatus as typeof sourceStatuses[number])) ||
+      search.length > 120 ||
       !Number.isSafeInteger(requestedLimit) ||
       requestedLimit < 1 ||
       requestedLimit > 100
     ) {
       throw new RequestError("Choose valid source-registry filters.", 400);
     }
-    const cursorSeparator = cursorValue.lastIndexOf("|");
+    const separator = cursorValue.lastIndexOf("|");
     const cursor = cursorValue
-      ? {
-          updatedAt: cursorValue.slice(0, cursorSeparator),
-          id: cursorValue.slice(cursorSeparator + 1),
-        }
+      ? { updatedAt: cursorValue.slice(0, separator), id: cursorValue.slice(separator + 1) }
       : null;
-    if (
-      cursor &&
-      (cursorSeparator < 1 ||
-        cursor.updatedAt.length > 64 ||
-        !/^src_[a-f0-9]{32}$/.test(cursor.id))
-    ) {
+    if (cursor && (separator < 1 || cursor.updatedAt.length > 64 || !uuidPattern.test(cursor.id))) {
       throw new RequestError("The source-registry cursor is invalid.", 400);
     }
 
-    const db = await ensureDatabase();
-    const where: string[] = [];
-    const bindings: Array<string | number> = [];
-    if (requestedStatus !== "all") {
-      where.push("status = ?");
-      bindings.push(requestedStatus);
+    const admin = createSupabaseAdminClient();
+    let query = admin
+      .from("source_registry")
+      .select("id,source_key,source_name,source_type,start_url,requires_review,is_active,notes,last_checked_at,last_success_at,last_error,updated_at")
+      .order("updated_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(requestedLimit + 1);
+    if (requestedStatus === "active") query = query.eq("is_active", true);
+    if (["pending", "paused", "revoked"].includes(requestedStatus)) {
+      query = query.eq("is_active", false);
     }
-    if (query) {
-      const escaped = query.replaceAll("!", "!!").replaceAll("%", "!%").replaceAll("_", "!_");
-      where.push("(name LIKE ? ESCAPE '!' COLLATE NOCASE OR canonical_url LIKE ? ESCAPE '!' COLLATE NOCASE)");
-      bindings.push(`%${escaped}%`, `%${escaped}%`);
+    if (search) {
+      const escaped = search.replaceAll("%", "\\%").replaceAll("_", "\\_");
+      query = query.or(`source_name.ilike.%${escaped}%,start_url.ilike.%${escaped}%`);
     }
     if (cursor) {
-      where.push("(updated_at < ? OR (updated_at = ? AND id < ?))");
-      bindings.push(cursor.updatedAt, cursor.updatedAt, cursor.id);
+      query = query.or(
+        `updated_at.lt.${cursor.updatedAt},and(updated_at.eq.${cursor.updatedAt},id.lt.${cursor.id})`,
+      );
     }
-    const [sourceResult, countResult] = await Promise.all([
-      db.prepare(
-        `SELECT id, source_key, name, source_type, canonical_url,
-           permission_basis, status, trust_level, last_seen_at, updated_at
-         FROM event_sources
-         ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-         ORDER BY updated_at DESC, id DESC
-         LIMIT ?`,
-      ).bind(...bindings, requestedLimit + 1).all<Record<string, unknown>>(),
-      db.prepare(
-        `SELECT status, COUNT(*) AS count FROM event_sources GROUP BY status`,
-      ).all<{ status: string; count: number }>(),
+    const [{ data, error }, { count: activeCount, error: activeError }, { count: pausedCount, error: pausedError }] = await Promise.all([
+      query,
+      admin.from("source_registry").select("id", { head: true, count: "exact" }).eq("is_active", true),
+      admin.from("source_registry").select("id", { head: true, count: "exact" }).eq("is_active", false),
     ]);
-    const pageSources = sourceResult.results.slice(0, requestedLimit);
-    const sourceIds = pageSources.map((source) => String(source.id));
-    const endpointResult = sourceIds.length
-      ? await db.prepare(
-        `SELECT endpoints.id, endpoints.source_id, endpoints.adapter,
-           endpoints.endpoint_url, endpoints.status, endpoints.schedule_hours,
-           endpoints.country_code, endpoints.locale, endpoints.timezone,
-           endpoints.max_pages, endpoints.max_records, endpoints.next_run_at,
-           endpoints.failure_count, endpoints.last_success_at,
-           endpoints.last_error_code, runs.status AS last_run_status,
-           runs.started_at AS last_run_started_at,
-           runs.findings_count AS last_run_findings_count,
-           runs.candidates_count AS last_run_candidates_count
-         FROM event_source_endpoints endpoints
-         LEFT JOIN discovery_runs runs ON runs.id = (
-           SELECT latest.id FROM discovery_runs latest
-           WHERE latest.endpoint_id = endpoints.id
-           ORDER BY latest.started_at DESC LIMIT 1
-         )
-         WHERE endpoints.source_id IN (${sourceIds.map(() => "?").join(",")})
-         ORDER BY endpoints.created_at ASC`,
-      ).bind(...sourceIds).all<Record<string, unknown>>()
-      : { results: [] as Record<string, unknown>[] };
-    const endpointsBySource = new Map<string, Record<string, unknown>[]>();
-    for (const endpoint of endpointResult.results) {
-      const sourceId = String(endpoint.source_id ?? "");
-      const current = endpointsBySource.get(sourceId) ?? [];
-      current.push(endpoint);
-      endpointsBySource.set(sourceId, current);
-    }
-    const sources = pageSources.map((source) => ({
-      id: source.id,
-      key: source.source_key,
-      name: source.name,
-      type: source.source_type,
-      canonicalUrl: source.canonical_url,
-      permissionBasis: source.permission_basis,
-      status: source.status,
-      trustLevel: source.trust_level,
-      lastSeenAt: source.last_seen_at,
-      updatedAt: source.updated_at,
-      endpoints: (endpointsBySource.get(String(source.id)) ?? []).map((endpoint) => ({
-        id: endpoint.id,
-        adapter: endpoint.adapter,
-        url: endpoint.endpoint_url,
-        status: endpoint.status,
-        scheduleHours: endpoint.schedule_hours,
-        countryCode: endpoint.country_code,
-        locale: endpoint.locale,
-        timezone: endpoint.timezone,
-        maxPages: endpoint.max_pages,
-        maxRecords: endpoint.max_records,
-        nextRunAt: endpoint.next_run_at,
-        failureCount: endpoint.failure_count,
-        lastSuccessAt: endpoint.last_success_at,
-        lastErrorCode: endpoint.last_error_code,
-        lastRun: endpoint.last_run_status
-          ? {
-              status: endpoint.last_run_status,
-              startedAt: endpoint.last_run_started_at,
-              findingsCount: endpoint.last_run_findings_count,
-              candidatesCount: endpoint.last_run_candidates_count,
-            }
-          : null,
-      })),
-    }));
+    if (error) throw error;
+    if (activeError) throw activeError;
+    if (pausedError) throw pausedError;
+    const rows = ((data ?? []) as SourceRegistryRow[]).slice(0, requestedLimit);
+    const last = rows.at(-1);
     return noStoreJson({
       ok: true,
       data: {
-        sources,
-        nextCursor: sourceResult.results.length > requestedLimit && pageSources.length
-          ? `${String(pageSources.at(-1)?.updated_at)}|${String(pageSources.at(-1)?.id)}`
-          : null,
-        counts: countResult.results.reduce<Record<string, number>>((counts, row) => {
-          counts[row.status] = Number(row.count);
-          return counts;
-        }, {}),
+        sources: rows.map((source) => ({
+          id: source.id,
+          key: source.source_key,
+          name: source.source_name,
+          type: source.source_type,
+          canonicalUrl: source.start_url,
+          permissionBasis: "manual_review",
+          status: displayStatus(source),
+          trustLevel: "unverified",
+          lastSeenAt: source.last_checked_at,
+          updatedAt: source.updated_at,
+          lastError: source.last_error,
+          endpoints: [],
+        })),
+        nextCursor:
+          (data?.length ?? 0) > requestedLimit && last
+            ? `${last.updated_at}|${last.id}`
+            : null,
+        counts: { active: activeCount ?? 0, paused: pausedCount ?? 0 },
       },
     });
   } catch (error) {
@@ -206,7 +130,7 @@ export async function POST(request: Request) {
     const { user } = await requireAdminApiUser(request);
     const limit = await checkDurableAuthRateLimit({
       request,
-      scope: "admin-discovery-source-control",
+      scope: "admin-supabase-source-control",
       subject: user.memberId,
       includeIp: false,
       limit: 60,
@@ -214,391 +138,166 @@ export async function POST(request: Request) {
     });
     if (!limit.allowed) {
       return noStoreJson(
-        {
-          ok: false,
-          error: {
-            code: "ADMIN_RATE_LIMITED",
-            message: "Too many source-control changes were attempted.",
-          },
-        },
+        { ok: false, error: { code: "ADMIN_RATE_LIMITED", message: "Too many source-control changes were attempted." } },
         { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
       );
     }
-
     const body = await readJsonBody(request, 3_000);
-    const allowedKeys = [
-      "sourceId",
-      "candidateId",
-      "expectedUpdatedAt",
-      "status",
-      "trustLevel",
-      "reason",
-    ];
-    if (Object.keys(body).some((key) => !allowedKeys.includes(key))) {
-      throw new RequestError("The source-control request contains unsupported fields.", 400);
-    }
     const sourceId = typeof body.sourceId === "string" ? body.sourceId.trim() : "";
-    const candidateId = Object.hasOwn(body, "candidateId")
-      ? typeof body.candidateId === "string"
-        ? body.candidateId.trim()
-        : ""
-      : null;
+    const candidateId = typeof body.candidateId === "string" ? body.candidateId.trim() : null;
     const expectedUpdatedAt =
-      typeof body.expectedUpdatedAt === "string"
-        ? body.expectedUpdatedAt.trim()
-        : "";
-    const status = body.status;
-    const trustLevel = body.trustLevel;
+      typeof body.expectedUpdatedAt === "string" ? body.expectedUpdatedAt.trim() : "";
+    const status = typeof body.status === "string" ? body.status : "";
+    const trustLevel = typeof body.trustLevel === "string" ? body.trustLevel : "";
     const reason = typeof body.reason === "string" ? body.reason.trim() : "";
     if (
-      !/^src_[a-f0-9]{32}$/.test(sourceId) ||
-      (candidateId !== null && !/^can_[a-f0-9]{32}$/.test(candidateId)) ||
+      !uuidPattern.test(sourceId) ||
+      (candidateId !== null && !uuidPattern.test(candidateId)) ||
       !expectedUpdatedAt ||
       expectedUpdatedAt.length > 64 ||
-      typeof status !== "string" ||
-      !sourceStatuses.includes(status as SourceStatus) ||
-      typeof trustLevel !== "string" ||
-      !sourceTrustLevels.includes(trustLevel as SourceTrust)
+      !sourceStatuses.includes(status as typeof sourceStatuses[number]) ||
+      trustLevel !== "unverified"
     ) {
       throw new RequestError("Refresh and choose valid source controls.", 400);
     }
     if (reason.length < 10 || reason.length > 500) {
-      throw new RequestError(
-        "Give a source-control reason between 10 and 500 characters.",
-        400,
-      );
+      throw new RequestError("Give a source-control reason between 10 and 500 characters.", 400);
     }
 
-    const db = await ensureDatabase();
-    const source = await db
-      .prepare(
-        `SELECT id, status, trust_level, updated_at
-         FROM event_sources WHERE id = ? LIMIT 1`,
-      )
-      .bind(sourceId)
-      .first<SourceRow>();
+    const admin = createSupabaseAdminClient();
+    const { data: sourceData, error: sourceError } = await admin
+      .from("source_registry")
+      .select("id,source_key,source_name,source_type,start_url,requires_review,is_active,notes,last_checked_at,last_success_at,last_error,updated_at")
+      .eq("id", sourceId)
+      .maybeSingle();
+    if (sourceError) throw sourceError;
+    const source = sourceData as SourceRegistryRow | null;
     if (!source) {
       return noStoreJson(
-        {
-          ok: false,
-          error: { code: "SOURCE_NOT_FOUND", message: "That source was not found." },
-        },
+        { ok: false, error: { code: "SOURCE_NOT_FOUND", message: "That source was not found." } },
         { status: 404 },
       );
     }
     if (source.updated_at !== expectedUpdatedAt) {
       return noStoreJson(
-        {
-          ok: false,
-          error: {
-            code: "SOURCE_ITEM_STALE",
-            message: "Another administrator changed this source. Refresh first.",
-          },
-        },
+        { ok: false, error: { code: "SOURCE_ITEM_STALE", message: "Another administrator changed this source. Refresh first." } },
         { status: 409 },
       );
     }
-    const displayedRelation = candidateId
-      ? await db
-        .prepare(
-          `SELECT displayed.id
-           FROM event_candidate_provenance displayed
-           WHERE displayed.candidate_id = ? AND displayed.source_id = ?
-             AND displayed.id = (
-               SELECT latest.id
-               FROM event_candidate_provenance latest
-               WHERE latest.candidate_id = displayed.candidate_id
-               ORDER BY latest.observed_at DESC, latest.created_at DESC
-               LIMIT 1
-             )
-           LIMIT 1`,
-        )
-        .bind(candidateId, sourceId)
-        .first<SourceRelationRow>()
-      : null;
-    if (candidateId && !displayedRelation) {
+
+    let candidate: ReviewQueueRow | null = null;
+    let linkedEventId: string | null = null;
+    if (candidateId) {
+      const { data, error } = await admin
+        .from("review_queue")
+        .select("id,candidate_key,proposed_event,source_url,reason,confidence_score,status,reviewed_by,reviewed_at,created_at,updated_at")
+        .eq("id", candidateId)
+        .maybeSingle();
+      if (error) throw error;
+      candidate = data as ReviewQueueRow | null;
+      linkedEventId = candidate ? proposedEventId(candidate.proposed_event) : null;
+      if (!candidate || !linkedEventId) {
+        return noStoreJson(
+          { ok: false, error: { code: "SOURCE_RELATION_STALE", message: "The displayed candidate source changed. Refresh first." } },
+          { status: 409 },
+        );
+      }
+      const { count, error: relationError } = await admin
+        .from("event_sources")
+        .select("id", { head: true, count: "exact" })
+        .eq("event_id", linkedEventId)
+        .eq("provider", source.source_key);
+      if (relationError) throw relationError;
+      if (!count) {
+        return noStoreJson(
+          { ok: false, error: { code: "SOURCE_RELATION_STALE", message: "The displayed candidate source changed. Refresh first." } },
+          { status: 409 },
+        );
+      }
+    }
+
+    const nextActive = status === "active";
+    if (source.is_active === nextActive) {
+      throw new RequestError("Choose a source status change before saving.", 400);
+    }
+    const now = new Date().toISOString();
+    let linkedPublicEventsAffected = 0;
+    if (!nextActive) {
+      const { data: links, error: linksError } = await admin
+        .from("event_sources")
+        .select("event_id")
+        .eq("provider", source.source_key);
+      if (linksError) throw linksError;
+      const eventIds = [...new Set((links ?? []).map((link) => String(link.event_id)).filter(Boolean))];
+      if (eventIds.length) {
+        const { data: withdrawn, error: withdrawError } = await admin
+          .from("events")
+          .update({ status: "review", updated_at: now })
+          .in("id", eventIds)
+          .eq("status", "published")
+          .select("id");
+        if (withdrawError) throw withdrawError;
+        linkedPublicEventsAffected = withdrawn?.length ?? 0;
+        if (linkedPublicEventsAffected) {
+          const { data: mergedRows, error: mergedError } = await admin
+            .from("review_queue")
+            .select("id,proposed_event,reason")
+            .in("status", ["approved", "merged"]);
+          if (mergedError) throw mergedError;
+          const affected = (mergedRows ?? []).filter((row) => {
+            const eventId = proposedEventId(row.proposed_event as Record<string, unknown>);
+            return Boolean(eventId && eventIds.includes(eventId));
+          });
+          await Promise.all(affected.map(async (row) => {
+            const { error } = await admin
+              .from("review_queue")
+              .update({
+                status: "pending",
+                reason: `${String(row.reason ?? "")}\nSource paused ${now.slice(0, 10)}: ${reason}`.trim().slice(0, 2_000),
+                reviewed_by: null,
+                reviewed_at: null,
+                updated_at: now,
+              })
+              .eq("id", row.id)
+              .in("status", ["approved", "merged"]);
+            if (error) throw error;
+          }));
+        }
+      }
+    }
+
+    const nextNotes = `${source.notes}\nAdmin source review ${now.slice(0, 10)} (${status}): ${reason}`
+      .trim()
+      .slice(0, 4_000);
+    const { data: updatedSource, error: updateError } = await admin
+      .from("source_registry")
+      .update({ is_active: nextActive, notes: nextNotes, updated_at: now })
+      .eq("id", sourceId)
+      .eq("updated_at", expectedUpdatedAt)
+      .select("updated_at")
+      .maybeSingle();
+    if (updateError) throw updateError;
+    if (!updatedSource) {
       return noStoreJson(
-        {
-          ok: false,
-          error: {
-            code: "SOURCE_RELATION_STALE",
-            message:
-              "The displayed candidate source changed. Refresh before changing source controls.",
-          },
-        },
+        { ok: false, error: { code: "SOURCE_ITEM_STALE", message: "Another administrator changed this source. Refresh first." } },
         { status: 409 },
       );
     }
-    if (source.status === status && source.trust_level === trustLevel) {
-      throw new RequestError("Choose a source status or trust change before saving.", 400);
-    }
-
-    const nextUpdatedAtCandidate = new Date().toISOString();
-    const nextUpdatedAt =
-      nextUpdatedAtCandidate === expectedUpdatedAt
-        ? new Date(Date.now() + 1).toISOString()
-        : nextUpdatedAtCandidate;
-    const inactive = status === "paused" || status === "revoked" ? 1 : 0;
-    const verificationLabel =
-      status !== "active"
-        ? "source_checked"
-        : trustLevel === "organizer" || trustLevel === "official"
-          ? "organizer_verified"
-          : trustLevel === "partner"
-            ? "partner_verified"
-            : "source_checked";
-    const auditId = `dsa_${crypto.randomUUID()}`;
-    const epoch = Math.floor(Date.now() / 1_000);
-    const [sourceResult, eventResult, , , auditResult] = await db.batch([
-      db
-        .prepare(
-          `UPDATE event_sources
-           SET status = ?, trust_level = ?, updated_at = ?
-           WHERE id = ? AND updated_at = ?
-             AND (? IS NULL OR EXISTS (
-               SELECT 1
-               FROM event_candidate_provenance displayed
-               WHERE displayed.candidate_id = ?
-                 AND displayed.source_id = event_sources.id
-                 AND displayed.id = (
-                   SELECT latest.id
-                   FROM event_candidate_provenance latest
-                   WHERE latest.candidate_id = displayed.candidate_id
-                   ORDER BY latest.observed_at DESC, latest.created_at DESC
-                   LIMIT 1
-                 )
-             ))`,
-        )
-        .bind(
-          status,
-          trustLevel,
-          nextUpdatedAt,
-          sourceId,
-          expectedUpdatedAt,
-          candidateId,
-          candidateId,
-        ),
-      db
-        .prepare(
-          `UPDATE motoring_events
-           SET status = 'withdrawn', updated_at = ?
-           WHERE ? = 1 AND status = 'published'
-             AND id IN (
-               SELECT event_id FROM motoring_event_provenance
-               WHERE source_id = ?
-             )
-             AND EXISTS (
-               SELECT 1 FROM event_sources
-               WHERE id = ? AND updated_at = ? AND status = ?
-                 AND trust_level = ?
-             )`,
-        )
-        .bind(
-          nextUpdatedAt,
-          inactive,
-          sourceId,
-          sourceId,
-          nextUpdatedAt,
-          status,
-          trustLevel,
-        ),
-      db
-        .prepare(
-          `UPDATE event_candidates
-           SET status = 'reviewing', review_required = 1,
-             published_event_id = NULL, updated_at = ?
-           WHERE ? = 1 AND status = 'published'
-             AND published_event_id IN (
-               SELECT events.id
-               FROM motoring_events events
-               JOIN motoring_event_provenance provenance
-                 ON provenance.event_id = events.id
-               WHERE provenance.source_id = ?
-                 AND events.status = 'withdrawn'
-                 AND events.updated_at = ?
-             )
-             AND EXISTS (
-               SELECT 1 FROM event_sources
-               WHERE id = ? AND updated_at = ? AND status = ?
-                 AND trust_level = ?
-             )`,
-        )
-        .bind(
-          nextUpdatedAt,
-          inactive,
-          sourceId,
-          nextUpdatedAt,
-          sourceId,
-          nextUpdatedAt,
-          status,
-          trustLevel,
-        ),
-      db
-        .prepare(
-          `UPDATE motoring_event_provenance
-           SET verification_label = ?, updated_at = ?
-           WHERE source_id = ?
-             AND EXISTS (
-               SELECT 1 FROM event_sources
-               WHERE id = ? AND updated_at = ? AND status = ?
-                 AND trust_level = ?
-             )`,
-        )
-        .bind(
-          verificationLabel,
-          nextUpdatedAt,
-          sourceId,
-          sourceId,
-          nextUpdatedAt,
-          status,
-          trustLevel,
-        ),
-      db
-        .prepare(
-          `INSERT INTO event_source_review_audit (
-             id, source_id, candidate_id, admin_member_id, admin_email,
-             action, previous_status, next_status, previous_trust_level,
-             next_trust_level, reason, previous_updated_at, next_updated_at,
-             linked_public_events_affected, created_at
-           )
-           SELECT ?, id, ?, ?, ?, 'source_control_updated', ?, ?, ?, ?, ?, ?, ?,
-             (
-               SELECT COUNT(DISTINCT events.id)
-               FROM motoring_events events
-               JOIN motoring_event_provenance provenance
-                 ON provenance.event_id = events.id
-               WHERE provenance.source_id = event_sources.id
-                 AND events.status = 'withdrawn'
-                 AND events.updated_at = ?
-             ), ?
-           FROM event_sources
-           WHERE id = ? AND updated_at = ? AND status = ? AND trust_level = ?
-             AND (? IS NULL OR EXISTS (
-               SELECT 1
-               FROM event_candidate_provenance displayed
-               WHERE displayed.candidate_id = ?
-                 AND displayed.source_id = event_sources.id
-                 AND displayed.id = (
-                   SELECT latest.id
-                   FROM event_candidate_provenance latest
-                   WHERE latest.candidate_id = displayed.candidate_id
-                   ORDER BY latest.observed_at DESC, latest.created_at DESC
-                   LIMIT 1
-                 )
-             ))`,
-        )
-        .bind(
-          auditId,
-          candidateId,
-          user.memberId,
-          user.authenticatedEmail.trim().toLowerCase(),
-          source.status,
-          status,
-          source.trust_level,
-          trustLevel,
-          reason,
-          expectedUpdatedAt,
-          nextUpdatedAt,
-          nextUpdatedAt,
-          epoch,
-          sourceId,
-          nextUpdatedAt,
-          status,
-          trustLevel,
-          candidateId,
-          candidateId,
-        ),
-    ]);
-
-    if (
-      Number(sourceResult.meta.changes ?? 0) !== 1 ||
-      Number(auditResult.meta.changes ?? 0) !== 1
-    ) {
-      const currentRelation = candidateId
-        ? await db
-          .prepare(
-            `SELECT displayed.id
-             FROM event_candidate_provenance displayed
-             WHERE displayed.candidate_id = ? AND displayed.source_id = ?
-               AND displayed.id = (
-                 SELECT latest.id
-                 FROM event_candidate_provenance latest
-                 WHERE latest.candidate_id = displayed.candidate_id
-                 ORDER BY latest.observed_at DESC, latest.created_at DESC
-                 LIMIT 1
-               )
-             LIMIT 1`,
-          )
-          .bind(candidateId, sourceId)
-          .first<SourceRelationRow>()
-        : null;
-      if (candidateId && !currentRelation) {
-        return noStoreJson(
-          {
-            ok: false,
-            error: {
-              code: "SOURCE_RELATION_STALE",
-              message:
-                "The displayed candidate source changed. Refresh before changing source controls.",
-            },
-          },
-          { status: 409 },
-        );
-      }
-      const current = await db
-        .prepare(`SELECT updated_at FROM event_sources WHERE id = ? LIMIT 1`)
-        .bind(sourceId)
-        .first<{ updated_at: string }>();
-      if (current) {
-        return noStoreJson(
-          {
-            ok: false,
-            error: {
-              code: "SOURCE_ITEM_STALE",
-              message: "Another administrator changed this source. Refresh first.",
-            },
-          },
-          { status: 409 },
-        );
-      }
-      return noStoreJson(
-        {
-          ok: false,
-          error: { code: "SOURCE_NOT_FOUND", message: "That source was not found." },
-        },
-        { status: 404 },
-      );
-    }
-
-    const candidateAfter = candidateId
-      ? await db
-        .prepare(
-          `SELECT status, review_required, updated_at
-           FROM event_candidates WHERE id = ? LIMIT 1`,
-        )
-        .bind(candidateId)
-        .first<{
-          status: string;
-          review_required: number;
-          updated_at: string;
-        }>()
-      : null;
-
     return noStoreJson({
       ok: true,
       data: {
         sourceReview: {
-          id: sourceId,
-          updatedAt: nextUpdatedAt,
-          status,
-          trustLevel,
+          id: source.id,
+          updatedAt: updatedSource.updated_at,
+          status: nextActive ? "active" : "paused",
+          trustLevel: "unverified",
         },
-        linkedPublicEventsAffected: Number(eventResult.meta.changes ?? 0),
-        candidateState: candidateAfter
+        linkedPublicEventsAffected,
+        candidateState: candidate
           ? {
-              status: candidateAfter.status,
-              reviewRequired: Boolean(candidateAfter.review_required),
-              updatedAt: candidateAfter.updated_at,
+              status: nextActive ? (candidate.status === "merged" ? "published" : candidate.status) : "pending",
+              reviewRequired: !nextActive || candidate.status !== "approved",
+              updatedAt: candidate.updated_at,
             }
           : null,
       },

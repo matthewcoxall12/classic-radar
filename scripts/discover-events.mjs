@@ -12,8 +12,12 @@ const USER_AGENT =
 const MAX_BYTES = 2_000_000;
 const EVENT_WORDS =
   /\b(classic|vintage|historic|heritage|retro|motor|motoring|car|cars|vehicle|vehicles|autojumble|rally|road run|hillclimb|hill climb|concours|auto|automobile|show|meet|festival|race|racing)\b/i;
+const STRONG_MOTORING_WORDS =
+  /\b(classic(?:\s+car)?|vintage(?:\s+(?:car|vehicle|motor))?|historic(?:\s+(?:car|vehicle|motor|racing))|retro(?:\s+(?:car|vehicle|motor))?|motorsport|motoring|motorbike|motorcycle|cars?|vehicles?|autojumble|auto\s+jumble|concours|hill\s*climb|hillclimb|road\s+run|road\s+rally|rally|racing|race|drag\s+racing|hot\s+rod|owners?\s+club)\b/i;
 const GENERIC_TITLES =
-  /^(events?|what(?:'|’)s on|calendar|home|welcome|motorsport|latest events?)$/i;
+  /^(events?|what(?:'|’)s on|calendar|home|welcome|motorsport|motoring events?|latest events?|all racing|i am visitor|at a glance|car clubs?|museum|news|hospitality)$/i;
+const NON_EVENT_PATH =
+  /\/(?:about|account|basics|basket|blog|car-clubs?|cart|cookie|faq|guide|hospitality|intro|login|news|privacy|style-guide|terms|visitor|visitors)(?:\/|$)/i;
 const PRIVATE_IPV4 =
   /^(?:127\.|10\.|0\.|169\.254\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/;
 const TIMEZONES = {
@@ -62,6 +66,14 @@ function cleanText(value, maximum = 2_000) {
     .replace(/&amp;/gi, "&")
     .replace(/&quot;|&#34;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#x([0-9a-f]{1,6});/gi, (_, code) => {
+      const point = Number.parseInt(code, 16);
+      return point <= 0x10ffff ? String.fromCodePoint(point) : " ";
+    })
+    .replace(/&#([0-9]{1,7});/g, (_, code) => {
+      const point = Number.parseInt(code, 10);
+      return point <= 0x10ffff ? String.fromCodePoint(point) : " ";
+    })
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/[\u0000-\u001f\u007f]/g, " ")
@@ -180,6 +192,41 @@ function samePublisherHost(left, right) {
   return normalise(left) === normalise(right);
 }
 
+function pageSignalText(value) {
+  const parsed = new URL(value);
+  return cleanText(`${decodeURIComponent(parsed.pathname)} ${parsed.search}`, 2_000);
+}
+
+function sameCanonicalPage(left, right) {
+  const normalise = (value) => {
+    const parsed = new URL(value);
+    parsed.hostname = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    parsed.pathname = parsed.pathname.replace(/\/+$/, "") || "/";
+    parsed.hash = "";
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (/^(?:utm_.+|fbclid|gclid|mc_cid|mc_eid)$/i.test(key)) {
+        parsed.searchParams.delete(key);
+      }
+    }
+    return parsed.toString();
+  };
+  return normalise(left) === normalise(right);
+}
+
+function sourceIsMotoringSpecific(source) {
+  return ["club", "federation", "motorsport"].includes(source.sourceType) ||
+    STRONG_MOTORING_WORDS.test(`${source.name ?? ""} ${source.url ?? ""}`);
+}
+
+function isRelevantMotoringEvent(title, description, pageUrl, source) {
+  const path = pageSignalText(pageUrl);
+  if (NON_EVENT_PATH.test(new URL(pageUrl).pathname)) return false;
+  if (STRONG_MOTORING_WORDS.test(title)) return true;
+  if (!sourceIsMotoringSpecific(source)) return false;
+  return EVENT_WORDS.test(`${title} ${description}`) ||
+    /\/(?:event|events|calendar|meets?|rallies|rally|shows?)(?:\/|[-_.?]|$)/i.test(path);
+}
+
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -286,6 +333,9 @@ function jsonLdCandidate(event, pageUrl, source) {
   const latitude = Number(geo.latitude);
   const longitude = Number(geo.longitude);
   const description = cleanText(event.description, 3_800);
+  if (!isRelevantMotoringEvent(title, description, officialUrl, source)) {
+    return null;
+  }
   const venue = cleanText(location.name, 180);
   const town = cleanText(address.addressLocality, 120);
   const postcode = cleanText(address.postalCode, 16);
@@ -369,6 +419,7 @@ function htmlCandidate(html, pageUrl, source) {
   ) return null;
   const description = metaContent(html, "og:description") ||
     metaContent(html, "description", "name") || visible.slice(0, 1_200);
+  if (!isRelevantMotoringEvent(title, description, pageUrl, source)) return null;
   const officialUrl = safePublicUrl(metaContent(html, "og:url") || pageUrl, pageUrl);
   if (!officialUrl) return null;
   const excerpt = cleanText(title + " " + startDate + " " + description, 1_000);
@@ -416,10 +467,19 @@ function htmlCandidate(html, pageUrl, source) {
   };
 }
 
-export function extractCandidatesFromHtml(html, pageUrl, source) {
+export function extractCandidatesFromHtml(
+  html,
+  pageUrl,
+  source,
+  options = {},
+) {
   const structured = jsonLdObjects(html)
     .map((event) => jsonLdCandidate(event, pageUrl, source))
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((candidate) =>
+      !options.detailPage ||
+      sameCanonicalPage(candidate.sources[0].canonicalUrl, pageUrl)
+    );
   if (structured.length) return structured;
   const fallback = htmlCandidate(html, pageUrl, source);
   return fallback ? [fallback] : [];
@@ -432,10 +492,13 @@ export function eventLinks(html, baseUrl, limit = 3) {
   for (const match of html.matchAll(pattern)) {
     const url = safePublicUrl(match[1], baseUrl);
     const label = cleanText(match[2], 180);
+    const path = url ? new URL(url).pathname : "";
     if (
       !url || new URL(url).origin !== origin ||
-      !EVENT_WORDS.test(label + " " + url) ||
-      /\/login|\/account|\/basket|\/cart|privacy|terms|cookie|wp-json|\/feed\/?$/i.test(url)
+      sameCanonicalPage(url, baseUrl) ||
+      !EVENT_WORDS.test(`${label} ${pageSignalText(url)}`) ||
+      NON_EVENT_PATH.test(path) ||
+      /wp-json|\/feed\/?$/i.test(path)
     ) continue;
     links.set(url, label);
     if (links.size >= limit) break;
@@ -574,7 +637,7 @@ export async function processSource(source, detailLimit) {
     pages.push(root);
     for (const detailUrl of eventLinks(root.text, root.url, detailLimit)) {
       try {
-        pages.push(await fetchPage(detailUrl));
+        pages.push({ ...(await fetchPage(detailUrl)), detailPage: true });
       } catch (error) {
         errors.push(
           detailUrl + ": " + (error instanceof Error ? error.message : error),
@@ -601,7 +664,9 @@ export async function processSource(source, detailLimit) {
           .filter(Boolean),
       );
     } else {
-      candidates.push(...extractCandidatesFromHtml(page.text, page.url, source));
+      candidates.push(...extractCandidatesFromHtml(page.text, page.url, source, {
+        detailPage: Boolean(page.detailPage),
+      }));
     }
   }
   return {
@@ -610,7 +675,8 @@ export async function processSource(source, detailLimit) {
     error: errors[0] || null,
     pagesFetched: pages.length,
     candidates: mergeCandidates(candidates).slice(0, 20),
-    errors: errors.map((error) => source.key + ": " + error),
+    errors: [],
+    warnings: errors.map((error) => source.key + ": " + error),
   };
 }
 
@@ -731,6 +797,7 @@ export async function main() {
   );
   const candidates = mergeCandidates(results.flatMap((result) => result.candidates));
   const errors = results.flatMap((result) => result.errors).slice(0, 100);
+  const warnings = results.flatMap((result) => result.warnings ?? []).slice(0, 100);
   const pagesFetched = results.reduce(
     (total, result) => total + result.pagesFetched,
     0,
@@ -741,6 +808,12 @@ export async function main() {
       candidates.length + " review candidate(s) from " + sourcesSucceeded +
       "/" + sources.length + " source(s)",
   );
+  if (warnings.length) {
+    console.warn(
+      "Discovery skipped " + warnings.length +
+        " optional detail page(s); root source checks still completed",
+    );
+  }
   if (dryRun) {
     return { sources: sources.length, pagesFetched, candidates: candidates.length };
   }

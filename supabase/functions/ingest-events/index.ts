@@ -182,16 +182,36 @@ function sourceType(value: unknown): string {
     : "organiser";
 }
 
-async function catalog() {
+function sourceDue(row: RecordLike, force: boolean): boolean {
+  if (force) return true;
+  const checkedAt = Date.parse(String(row.last_checked_at ?? ""));
+  if (!Number.isFinite(checkedAt)) return true;
+  const frequencyHours: Record<string, number> = {
+    six_hourly: 6,
+    daily: 24,
+    weekly: 24 * 7
+  };
+  let waitHours = frequencyHours[String(row.crawl_frequency)] ?? 24;
+  const lastError = text(row.last_error, 1_000);
+  if (/^(?:HTTP_403|HTTP_404|CROSS_ORIGIN_REDIRECT|getaddrinfo ENOTFOUND)/.test(lastError)) {
+    waitHours = Math.max(waitHours, 24 * 7);
+  } else if (/^(?:HTTP_429|fetch failed|getaddrinfo EAI_AGAIN)/.test(lastError)) {
+    waitHours = Math.max(waitHours, 24);
+  }
+  return checkedAt <= Date.now() - waitHours * 60 * 60 * 1_000;
+}
+
+async function catalog(claims: JWTPayload) {
   const query = new URLSearchParams({
-    select: "source_key,source_name,domain,start_url,source_type,format_hint,country_code,region,priority_weight,crawl_frequency,requires_review,notes",
+    select: "source_key,source_name,domain,start_url,source_type,format_hint,country_code,region,priority_weight,crawl_frequency,requires_review,notes,last_checked_at,last_error",
     is_active: "eq.true",
     format_hint: "eq.html",
     order: "priority_weight.desc,source_key.asc",
     limit: "200"
   });
   const rows = await rest<RecordLike[]>("source_registry", { query });
-  const sources = (rows ?? []).flatMap((row) => {
+  const force = String(claims.event_name ?? "") === "workflow_dispatch";
+  const sources = (rows ?? []).filter((row) => sourceDue(row, force)).flatMap((row) => {
     const startUrl = url(row.start_url);
     const sourceKey = text(row.source_key, 120);
     if (!startUrl || !sourceKey) return [];
@@ -449,7 +469,7 @@ Deno.serve(async (request: Request) => {
     if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) return response({ ok: false, error: "Payload too large" }, 413);
     const payload = JSON.parse(rawBody) as RecordLike;
     if (payload.version !== 1) return response({ ok: false, error: "Unsupported payload version" }, 400);
-    if (payload.phase === "catalog") return await catalog();
+    if (payload.phase === "catalog") return await catalog(claims);
     if (payload.phase === "start") return await start(payload, claims);
     if (payload.phase === "batch") return await batch(payload);
     if (payload.phase === "finish") return await finish(payload);

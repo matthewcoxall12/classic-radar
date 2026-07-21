@@ -26,7 +26,8 @@ export async function POST(request: Request) {
     const longitude = finiteNumber(body.longitude, "Longitude", -180, 180);
     const radiusMiles = integerNumber(body.radiusMiles ?? 50, "Radius", 5, 250);
     const count = await supabase.from("member_locations").select("id", { count: "exact", head: true }).eq("user_id", user.memberId);
-    if ((count.count ?? 0) >= memberEntitlements(member).maxLocations) throw new MemberApiError(403, "LOCATION_LIMIT_REACHED", member.tier === "roadbook" ? "You have reached the ten-location limit." : "Free explorers can keep one home area. Upgrade for multiple locations.");
+    const entitlements = memberEntitlements(member);
+    if ((count.count ?? 0) >= entitlements.maxLocations) throw new MemberApiError(403, "LOCATION_LIMIT_REACHED", entitlements.maxLocations > 1 ? "You have reached the ten-location limit." : "Free explorers can keep one home area. Upgrade for multiple locations.");
     const isHome = (count.count ?? 0) === 0 || booleanValue(body.isHome);
     if (isHome) await supabase.from("member_locations").update({ is_home: false }).eq("user_id", user.memberId);
     const { data, error } = await supabase.from("member_locations").insert({ user_id: user.memberId, label, place_name: placeName, latitude, longitude, radius_miles: radiusMiles, is_home: isHome }).select("*").single();

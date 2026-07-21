@@ -4,15 +4,11 @@ import {
   type AuthenticatedUser,
 } from "@/lib/app-auth";
 import { AuthSecurityError } from "@/lib/auth-security";
-import { ensureDatabase } from "@/lib/database";
 import { readJsonBody, RequestError } from "@/lib/request-safety";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export type MemberTier = "free" | "roadbook";
 export type DigestFrequency = "off" | "daily" | "weekly";
-export type MemberDatabase = Awaited<ReturnType<typeof ensureDatabase>>;
-export type MemberStatement = ReturnType<MemberDatabase["prepare"]>;
-
 export type MemberRow = {
   id: string;
   email: string;
@@ -33,26 +29,6 @@ export type MemberRow = {
   updated_at: string;
 };
 
-export type EventRow = {
-  id: string;
-  title: string;
-  description: string;
-  venue: string;
-  town: string;
-  postcode: string;
-  start_date: string;
-  end_date: string | null;
-  start_time: string;
-  category: string;
-  latitude: number;
-  longitude: number;
-  official_url: string;
-  official_label: string;
-  price: string;
-  image: string;
-  featured: number;
-};
-
 export class MemberApiError extends Error {
   constructor(
     public status: number,
@@ -62,13 +38,6 @@ export class MemberApiError extends Error {
     super(message);
   }
 }
-
-export const EVENT_SELECT = `
-  e.id, e.title, e.description, e.venue, e.town, e.postcode,
-  e.start_date, e.end_date, e.start_time, e.category, e.latitude,
-  e.longitude, e.official_url, e.official_label, e.price, e.image,
-  e.featured
-`;
 
 export async function requireMember(request?: Request) {
   const isMutation =
@@ -87,7 +56,7 @@ export async function requireMember(request?: Request) {
   const supabase = await createSupabaseServerClient();
   const profileResult = await supabase
     .from("profiles")
-    .select("id,display_name,tier,home_location,latitude,longitude,home_radius_miles,digest_frequency,created_at,updated_at")
+    .select("id,display_name,tier,stripe_customer_id,stripe_subscription_id,subscription_status,subscription_expires_at,trial_started_at,calendar_token,home_location,latitude,longitude,home_radius_miles,digest_frequency,created_at,updated_at")
     .eq("id", user.memberId)
     .maybeSingle();
   if (profileResult.error) throw profileResult.error;
@@ -96,7 +65,7 @@ export async function requireMember(request?: Request) {
     const created = await supabase
       .from("profiles")
       .insert({ id: user.memberId, display_name: cleanString(user.displayName, 120) })
-      .select("id,display_name,tier,home_location,latitude,longitude,home_radius_miles,digest_frequency,created_at,updated_at")
+      .select("id,display_name,tier,stripe_customer_id,stripe_subscription_id,subscription_status,subscription_expires_at,trial_started_at,calendar_token,home_location,latitude,longitude,home_radius_miles,digest_frequency,created_at,updated_at")
       .single();
     if (created.error || !created.data) throw created.error ?? new Error("Profile could not be created.");
     profile = created.data;
@@ -106,26 +75,30 @@ export async function requireMember(request?: Request) {
     email: user.email.trim().toLowerCase(),
     display_name: profile.display_name || user.displayName,
     tier: profile.tier === "roadbook" ? "roadbook" : "free",
-    stripe_customer_id: null,
-    stripe_subscription_id: null,
-    subscription_status: null,
-    subscription_expires_at: null,
-    trial_started_at: null,
+    stripe_customer_id: profile.stripe_customer_id,
+    stripe_subscription_id: profile.stripe_subscription_id,
+    subscription_status: profile.subscription_status,
+    subscription_expires_at: profile.subscription_expires_at,
+    trial_started_at: profile.trial_started_at,
     home_area_name: profile.home_location,
     home_latitude: profile.latitude,
     home_longitude: profile.longitude,
     home_radius_miles: profile.home_radius_miles ?? 50,
     digest_frequency: profile.digest_frequency ?? "weekly",
-    calendar_token: null,
+    calendar_token: profile.calendar_token,
     created_at: profile.created_at,
     updated_at: profile.updated_at,
   };
-  const db = await ensureDatabase();
-  return { db, supabase, member, user };
+  return { supabase, member, user };
 }
 
 export function isRoadbookMember(member: MemberRow) {
-  return member.tier === "roadbook";
+  if (member.tier !== "roadbook") return false;
+  if (member.subscription_status !== "trialing") return true;
+  const expiresAt = member.subscription_expires_at
+    ? Date.parse(member.subscription_expires_at)
+    : Number.NaN;
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
 }
 
 export function requireRoadbookMember(member: MemberRow) {
@@ -165,12 +138,15 @@ export function publicMember(member: MemberRow) {
     displayName: member.display_name || member.email,
     tier: (paid ? "roadbook" : "free") as MemberTier,
     subscription: {
-      status: member.subscription_status,
+      status:
+        member.subscription_status === "trialing" && !paid
+          ? "expired"
+          : member.subscription_status,
       expiresAt: member.subscription_expires_at,
     },
     membershipSource: member.stripe_subscription_id
       ? "stripe"
-      : member.subscription_status === "trialing"
+      : paid && member.subscription_status === "trialing"
         ? "trial"
         : null,
     trialEligible:
@@ -190,28 +166,6 @@ export function publicMember(member: MemberRow) {
       paid && member.calendar_token
         ? `/api/calendar/${member.calendar_token}`
         : null,
-  };
-}
-
-export function eventFromRow(row: EventRow) {
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    venue: row.venue,
-    town: row.town,
-    postcode: row.postcode,
-    startDate: row.start_date,
-    endDate: row.end_date,
-    startTime: row.start_time,
-    category: row.category,
-    latitude: row.latitude,
-    longitude: row.longitude,
-    officialUrl: row.official_url,
-    officialLabel: row.official_label,
-    price: row.price,
-    image: row.image,
-    featured: Boolean(row.featured),
   };
 }
 
@@ -391,12 +345,6 @@ export async function requestValue(
     "VALIDATION_ERROR",
     `A valid ${label} is required.`,
   );
-}
-
-export function createToken() {
-  const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export function parseStringList(value: unknown, maxItems = 12) {

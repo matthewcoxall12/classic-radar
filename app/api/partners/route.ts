@@ -1,4 +1,3 @@
-import { ensureDatabase } from "@/lib/database";
 import {
   AuthSecurityError,
   checkDurableAuthRateLimit,
@@ -10,6 +9,7 @@ import {
   RequestError,
 } from "@/lib/request-safety";
 import { shortReference } from "@/lib/operations-queue";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const clean = (value: unknown, limit = 500) =>
@@ -75,25 +75,18 @@ export async function POST(request: Request) {
       }
     }
 
-    const db = await ensureDatabase();
+    const supabase = createSupabaseAdminClient();
     const id = crypto.randomUUID();
-    await db
-      .prepare(
-        `INSERT INTO partner_enquiries (
-          id, contact_name, organisation_name, email, organisation_type,
-          website, message
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        id,
-        contactName,
-        organisationName,
-        email,
-        organisationType,
-        website,
-        message,
-      )
-      .run();
+    const { error: insertError } = await supabase.from("partner_enquiries").insert({
+      id,
+      contact_name: contactName,
+      organisation_name: organisationName,
+      email,
+      organisation_type: organisationType,
+      website,
+      message,
+    });
+    if (insertError) throw insertError;
 
     return Response.json(
       {

@@ -31,6 +31,19 @@ test("eventLinks remains on the registered source origin", () => {
   );
 });
 
+test("eventLinks does not treat motoring words in a hostname as event evidence", () => {
+  const html = [
+    '<a href="/visitors">I am visitor</a>',
+    '<a href="/news/prestige-bikes">Prestige bikes news</a>',
+    '<a href="/events/classic-rally">Classic rally</a>',
+    '<a href="/">Home</a>',
+  ].join("");
+  assert.deepEqual(
+    eventLinks(html, "https://retro-classics.example/events", 10),
+    ["https://retro-classics.example/events/classic-rally"],
+  );
+});
+
 test("network guard permits public addresses and rejects private ranges", () => {
   assert.equal(isPublicAddress("8.8.8.8"), true);
   assert.equal(isPublicAddress("2606:4700:4700::1111"), true);
@@ -108,6 +121,59 @@ test("Schema.org Event extraction produces review-only provenance", () => {
   assert.equal(candidates[0].town, "Sampletown");
   assert.equal(candidates[0].sources[0].method, "json-ld");
   assert.equal(candidates[0].sources[0].requiresReview, true);
+});
+
+test("detail-page extraction ignores unrelated global JSON-LD events", () => {
+  const html = `
+    <script type="application/ld+json">
+      {"@context":"https://schema.org","@graph":[
+        {"@type":"Event","name":"American Car Show &#8211; Sunday",
+         "startDate":"${nextYear}-08-09","url":"https://museum.example/event/american-car-show",
+         "location":{"@type":"Place","name":"Motor Museum"}},
+        {"@type":"Event","name":"The Wizard of Oz",
+         "startDate":"${nextYear}-08-10","url":"https://museum.example/event/wizard-of-oz",
+         "location":{"@type":"Place","name":"Museum Lawn"}}
+      ]}
+    </script>`;
+  const candidates = extractCandidatesFromHtml(
+    html,
+    "https://museum.example/event/american-car-show",
+    {
+      key: "motor-museum",
+      name: "Museum of Power",
+      url: "https://museum.example/events",
+      sourceType: "museum",
+      countryCode: "GB",
+    },
+    { detailPage: true },
+  );
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].title, "American Car Show – Sunday");
+  assert.equal(
+    candidates[0].sources[0].url,
+    "https://museum.example/event/american-car-show",
+  );
+});
+
+test("general venue activities are not classic-motoring candidates", () => {
+  const html = `
+    <script type="application/ld+json">
+      {"@context":"https://schema.org","@type":"Event",
+       "name":"Summer Holiday Fun – Oceans, Rivers and Seas",
+       "description":"Children's craft activities on the museum lawn.",
+       "startDate":"${nextYear}-08-13",
+       "url":"https://museum.example/event/summer-holiday-fun"}
+    </script>`;
+  assert.deepEqual(
+    extractCandidatesFromHtml(html, "https://museum.example/events", {
+      key: "museum-of-power",
+      name: "Museum of Power",
+      url: "https://museum.example/events",
+      sourceType: "museum",
+      countryCode: "GB",
+    }),
+    [],
+  );
 });
 
 test("unstructured detail pages stay low confidence and review-only", () => {

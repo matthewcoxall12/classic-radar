@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import SecondaryPageShell from "@/components/secondary-page-shell";
-import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +9,8 @@ type SharedRoadbook = {
   id: string;
   name: string;
   description: string;
-  updated_at: string;
-  user_id: string;
+  created_at: string;
+  events: Array<Record<string, unknown>>;
 };
 
 type SharedEvent = {
@@ -31,26 +31,14 @@ type SharedEvent = {
 async function getSharedRoadbook(token: string) {
   if (!/^[0-9a-f-]{36}$/i.test(token)) return null;
   try {
-    const supabase = createSupabaseAdminClient();
-    const roadbookResult = await supabase
-      .from("roadbooks")
-      .select("id,name,description,updated_at,user_id")
-      .eq("share_token", token)
-      .eq("is_shared", true)
-      .maybeSingle();
+    const supabase = await createSupabaseServerClient();
+    const roadbookResult = await supabase.rpc("get_shared_roadbook", {
+      p_share_token: token,
+    });
     const roadbook = roadbookResult.data as SharedRoadbook | null;
     if (roadbookResult.error || !roadbook) return null;
-    const profile = await supabase.from("profiles").select("tier").eq("id", roadbook.user_id).maybeSingle();
-    if (profile.data?.tier !== "roadbook") return null;
-    const eventResult = await supabase
-      .from("roadbook_events")
-      .select("position,notes,events(id,title,description,venue_name,town,postcode,start_date,end_date,start_time,price_text,booking_url,organiser_url,status)")
-      .eq("roadbook_id", roadbook.id)
-      .order("position");
-    if (eventResult.error) return null;
-    const events = (eventResult.data ?? []).flatMap((item) => {
-      const event = item.events as unknown as Record<string, unknown> | null;
-      if (!event || event.status !== "published") return [];
+    const events = (roadbook.events ?? []).flatMap((event) => {
+      if (!event?.id) return [];
       return [{
         id: String(event.id),
         title: String(event.title),
@@ -63,7 +51,7 @@ async function getSharedRoadbook(token: string) {
         start_time: event.start_time ? String(event.start_time).slice(0, 5) : "All day",
         price: String(event.price_text ?? "See official event page"),
         official_url: String(event.booking_url ?? event.organiser_url ?? "https://classicsgo.com"),
-        notes: item.notes ?? "",
+        notes: typeof event.notes === "string" ? event.notes : "",
       } satisfies SharedEvent];
     });
     return { roadbook, events };

@@ -2,6 +2,8 @@ const productionUrl = "https://rnayhhsurmztrohtftqo.supabase.co";
 const productionPublishableKey =
   "sb_publishable_x1iw7qogdYGSAO9Brsv9gg_dfKVL9mc";
 
+export const SUPABASE_AUTH_COOKIE_NAME = "__Host-cme_supabase_auth";
+
 export function supabasePublicConfig() {
   const configuredUrl = (
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? ""

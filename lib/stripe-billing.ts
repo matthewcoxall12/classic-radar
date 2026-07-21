@@ -7,6 +7,9 @@ import {
 
 const STRIPE_API_ORIGIN = "https://api.stripe.com";
 const WEBHOOK_TOLERANCE_SECONDS = 5 * 60;
+// The Sites/D1 billing ledger has not yet been migrated to Supabase. Keep every
+// billing entry point closed even if stale Stripe variables remain in Vercel.
+const SUPABASE_BILLING_STORAGE_READY = false;
 
 export type BillingPlan = "monthly" | "annual" | "founding";
 export type BillingPurpose = "checkout" | "portal" | "webhook";
@@ -139,6 +142,10 @@ export function getBillingConfig(
   const foundingCouponId = readBinding("STRIPE_FOUNDING_COUPON_ID");
   const rawSiteUrl = readBinding("SITE_URL");
   const missing: string[] = [];
+
+  if (!SUPABASE_BILLING_STORAGE_READY) {
+    missing.push("Supabase billing storage migration");
+  }
 
   if (!secretKey) missing.push("STRIPE_SECRET_KEY");
   if (!rawSiteUrl) missing.push("SITE_URL");

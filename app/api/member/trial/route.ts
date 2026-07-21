@@ -6,33 +6,14 @@ import {
   publicMember,
   requireMember,
 } from "@/lib/member-data";
-import { hmacIdentifier } from "@/lib/auth-security";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const { db, member } = await requireMember(request);
-    const now = Math.floor(Date.now() / 1000);
-    await db
-      .prepare(
-        `DELETE FROM account_deletion_tombstones
-         WHERE expires_at IS NOT NULL AND expires_at <= ?`,
-      )
-      .bind(now)
-      .run();
-    const previousAccount = await db
-      .prepare(
-        `SELECT id FROM account_deletion_tombstones
-         WHERE email_hash = ? AND expires_at > ? LIMIT 1`,
-      )
-      .bind(
-        await hmacIdentifier(`email:${member.email.trim().toLowerCase()}`),
-        now,
-      )
-      .first<{ id: string }>();
+    const { member, user } = await requireMember(request);
     if (
-      previousAccount ||
       member.tier !== "free" ||
       member.trial_started_at !== null ||
       member.stripe_subscription_id !== null
@@ -44,22 +25,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await db
-      .prepare(
-        `UPDATE members SET tier = 'roadbook', subscription_status = 'trialing',
-          subscription_expires_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+14 days'),
-          trial_started_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-         WHERE email = ? AND tier = 'free' AND trial_started_at IS NULL
-           AND stripe_subscription_id IS NULL`,
-      )
-      .bind(member.email)
-      .run();
-    if (Number(result.meta.changes ?? 0) !== 1) {
-      throw new MemberApiError(
-        409,
-        "TRIAL_UNAVAILABLE",
-        "This account is not eligible for another free trial.",
-      );
+    const started = await createSupabaseAdminClient().rpc(
+      "start_managed_roadbook_trial",
+      { p_user_id: user.memberId },
+    );
+    if (started.error || !started.data) {
+      if (
+        started.error?.code === "P0001" ||
+        /trial (?:already used|is unavailable)/i.test(started.error?.message ?? "")
+      ) {
+        throw new MemberApiError(
+          409,
+          "TRIAL_UNAVAILABLE",
+          "This account is not eligible for another free trial.",
+        );
+      }
+      throw started.error ?? new Error("The trial could not be started.");
     }
 
     const refreshed = await requireMember();

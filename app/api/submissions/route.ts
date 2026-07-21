@@ -1,4 +1,3 @@
-import { ensureDatabase } from "@/lib/database";
 import {
   AuthSecurityError,
   checkDurableAuthRateLimit,
@@ -10,6 +9,7 @@ import {
   RequestError,
 } from "@/lib/request-safety";
 import { shortReference } from "@/lib/operations-queue";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 const categories = new Set(["Show", "Meet", "Autojumble", "Motorsport", "Run"]);
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -99,30 +99,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = await ensureDatabase();
+    const supabase = createSupabaseAdminClient();
     const id = crypto.randomUUID();
-    await db
-      .prepare(
-        `INSERT INTO event_submissions (
-          id, event_name, organiser_name, email, club_name, official_url,
-          venue, town_postcode, start_date, end_date, category, description
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        id,
-        eventName,
-        organiserName,
-        email,
-        clubName,
-        parsedUrl.toString(),
-        venue,
-        townPostcode,
-        startDate,
-        endDate || null,
-        category,
-        description,
-      )
-      .run();
+    const { error: insertError } = await supabase.from("event_submissions").insert({
+      id,
+      event_name: eventName,
+      organiser_name: organiserName,
+      email,
+      club_name: clubName,
+      official_url: parsedUrl.toString(),
+      venue,
+      town_postcode: townPostcode,
+      start_date: startDate,
+      end_date: endDate || null,
+      category,
+      description,
+    });
+    if (insertError) throw insertError;
 
     return Response.json(
       {

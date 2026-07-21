@@ -11,6 +11,7 @@ import {
   readMemberJson,
   requireMember,
 } from "@/lib/member-data";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export async function PATCH(request: Request) {
     }
     if (Object.prototype.hasOwnProperty.call(body, "digestFrequency")) {
       const digest = normalizeDigest(body.digestFrequency);
-      if (member.tier !== "roadbook" && digest !== "weekly") throw new MemberApiError(403, "MEMBERSHIP_REQUIRED", "Custom digest frequency is included with Roadbook membership.");
+      if (!memberEntitlements(member).canUseAlerts && digest !== "weekly") throw new MemberApiError(403, "MEMBERSHIP_REQUIRED", "Custom digest frequency is included with Roadbook membership.");
       updates.digest_frequency = digest;
       member.digest_frequency = digest;
     }
@@ -58,12 +59,21 @@ export async function PATCH(request: Request) {
       }
     }
     if (Object.prototype.hasOwnProperty.call(body, "rotateCalendarToken")) {
-      if (member.tier !== "roadbook") throw new MemberApiError(403, "MEMBERSHIP_REQUIRED", "Calendar feeds are included with Roadbook membership.");
+      if (!memberEntitlements(member).canUseCalendarFeed) throw new MemberApiError(403, "MEMBERSHIP_REQUIRED", "Calendar feeds are included with Roadbook membership.");
+      if (body.rotateCalendarToken !== true) throw new MemberApiError(400, "VALIDATION_ERROR", "rotateCalendarToken must be true.");
     }
     if (!Object.keys(updates).length && !body.rotateCalendarToken) throw new MemberApiError(400, "VALIDATION_ERROR", "No editable member fields were provided.");
     if (Object.keys(updates).length) {
       const { error } = await supabase.from("profiles").update(updates).eq("id", user.memberId);
       if (error) throw error;
+    }
+    if (body.rotateCalendarToken === true) {
+      const rotated = await createSupabaseAdminClient().rpc(
+        "rotate_managed_calendar_token",
+        { p_user_id: user.memberId },
+      );
+      if (rotated.error || !rotated.data) throw rotated.error ?? new Error("Calendar link could not be replaced.");
+      member.calendar_token = String(rotated.data);
     }
     return jsonOk({ member: publicMember(member), entitlements: memberEntitlements(member) });
   } catch (error) {

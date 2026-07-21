@@ -1,17 +1,28 @@
-import { ensureDatabase } from "@/lib/database";
-import { EventRow, MemberRow } from "@/lib/member-data";
-import { refreshMemberStripeEntitlement } from "@/lib/stripe-billing";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
 
-type CalendarEventRow = EventRow;
+type CalendarEvent = {
+  id: string;
+  title: string;
+  description: string | null;
+  venue: string | null;
+  town: string | null;
+  postcode: string | null;
+  start_date: string;
+  end_date: string | null;
+  start_time: string | null;
+  price: string | null;
+  official_url: string | null;
+};
 
-const escapeIcs = (value: string) =>
-  value
-    .replace(/\\/g, "\\\\")
-    .replace(/\r?\n/g, "\\n")
-    .replace(/,/g, "\\,")
-    .replace(/;/g, "\\;");
+type CalendarFeed = { display_name: string; events: CalendarEvent[] };
+
+const escapeIcs = (value: string) => value
+  .replace(/\\/g, "\\\\")
+  .replace(/\r?\n/g, "\\n")
+  .replace(/,/g, "\\,")
+  .replace(/;/g, "\\;");
 
 const dateValue = (value: string) => value.replaceAll("-", "");
 
@@ -37,53 +48,18 @@ export async function GET(
   context: { params: Promise<{ token: string }> },
 ) {
   const { token } = await context.params;
-  if (!/^[a-f0-9]{48}$/.test(token)) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token)) {
     return new Response("Calendar not found.", { status: 404 });
   }
 
   try {
-    const db = await ensureDatabase();
-    const owner = await db
-      .prepare(`SELECT email FROM members WHERE calendar_token = ?`)
-      .bind(token)
-      .first<{ email: string }>();
-    if (!owner) return new Response("Calendar not found.", { status: 404 });
-    await refreshMemberStripeEntitlement(owner.email);
-    const member = await db
-      .prepare(
-        `SELECT id, email, display_name, tier, stripe_customer_id,
-          stripe_subscription_id, subscription_status, subscription_expires_at,
-          trial_started_at, home_area_name, home_latitude, home_longitude,
-          home_radius_miles, digest_frequency, calendar_token, created_at,
-          updated_at
-         FROM members
-         WHERE calendar_token = ? AND tier = 'roadbook'
-           AND (
-             subscription_status IS NULL
-             OR subscription_status <> 'trialing'
-             OR subscription_expires_at IS NULL
-             OR datetime(subscription_expires_at) > datetime('now')
-           )`,
-      )
-      .bind(token)
-      .first<MemberRow>();
-    if (!member) return new Response("Calendar not found.", { status: 404 });
-
-    const result = await db
-      .prepare(
-        `SELECT e.id, e.title, e.description, e.venue, e.town, e.postcode,
-          e.start_date, e.end_date, e.start_time, e.category, e.latitude,
-          e.longitude, e.official_url, e.official_label, e.price, e.image,
-          e.featured
-         FROM saved_events s
-         JOIN motoring_events e ON e.id = s.event_id
-         WHERE s.member_email = ? AND e.status = 'published'
-           AND COALESCE(e.end_date, e.start_date) >= date('now')
-         ORDER BY e.start_date ASC`,
-      )
-      .bind(member.email)
-      .all<CalendarEventRow>();
-
+    const result = await createSupabaseAdminClient().rpc(
+      "get_managed_calendar_feed",
+      { p_calendar_token: token },
+    );
+    if (result.error) throw result.error;
+    if (!result.data) return new Response("Calendar not found.", { status: 404 });
+    const feed = result.data as CalendarFeed;
     const now = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
     const lines = [
       "BEGIN:VCALENDAR",
@@ -92,19 +68,21 @@ export async function GET(
       "CALSCALE:GREGORIAN",
       "METHOD:PUBLISH",
       "X-PUBLISHED-TTL:PT1H",
-      `X-WR-CALNAME:${escapeIcs(`${member.display_name || "My"} Roadbook`)}`,
+      `X-WR-CALNAME:${escapeIcs(`${feed.display_name || "My"} Roadbook`)}`,
     ];
-    for (const event of result.results) {
+    for (const event of feed.events ?? []) {
+      const location = [event.venue, event.town, event.postcode].filter(Boolean).join(", ");
+      const details = [event.description, event.start_time?.slice(0, 5), event.price].filter(Boolean).join("\n");
       lines.push(
         "BEGIN:VEVENT",
-        `UID:${escapeIcs(event.id)}@classic-motoring-events`,
+        `UID:${escapeIcs(event.id)}@classicsgo.com`,
         `DTSTAMP:${now}`,
         `DTSTART;VALUE=DATE:${dateValue(event.start_date)}`,
         `DTEND;VALUE=DATE:${dateValue(dayAfter(event.end_date ?? event.start_date))}`,
         `SUMMARY:${escapeIcs(event.title)}`,
-        `LOCATION:${escapeIcs(`${event.venue}, ${event.town}, ${event.postcode}`)}`,
-        `DESCRIPTION:${escapeIcs(`${event.description}\n${event.start_time} · ${event.price}`)}`,
-        `URL:${escapeIcs(event.official_url)}`,
+        `LOCATION:${escapeIcs(location)}`,
+        `DESCRIPTION:${escapeIcs(details)}`,
+        ...(event.official_url ? [`URL:${escapeIcs(event.official_url)}`] : []),
         "END:VEVENT",
       );
     }
@@ -112,8 +90,9 @@ export async function GET(
     return new Response(lines.map(foldLine).join("\r\n") + "\r\n", {
       headers: {
         "Content-Type": "text/calendar; charset=utf-8",
-        "Content-Disposition": 'inline; filename="classic-motoring-roadbook.ics"',
+        "Content-Disposition": 'inline; filename="classicsgo-roadbook.ics"',
         "Cache-Control": "private, max-age=300",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (error) {

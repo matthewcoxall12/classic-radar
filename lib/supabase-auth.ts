@@ -2,7 +2,11 @@ import { createClient, type SupabaseClient, type User } from "@supabase/supabase
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getRuntimeEnv } from "@/lib/runtime-env";
-import { supabasePublicConfig, supabaseSecretKey } from "@/lib/supabase-config";
+import {
+  SUPABASE_AUTH_COOKIE_NAME,
+  supabasePublicConfig,
+  supabaseSecretKey,
+} from "@/lib/supabase-config";
 
 export type SupabaseAuthConfig = {
   url: string;
@@ -71,12 +75,11 @@ export async function createSupabaseRouteClient() {
   const cookieStore = await cookies();
   const client = createServerClient(config.url, config.publishableKey, {
     cookieOptions: {
-      name: "cme-supabase-pkce",
+      name: SUPABASE_AUTH_COOKIE_NAME,
       httpOnly: true,
       secure: true,
       sameSite: "lax",
       path: "/",
-      maxAge: 20 * 60,
     },
     cookies: {
       getAll: () => cookieStore.getAll(),
@@ -88,6 +91,28 @@ export async function createSupabaseRouteClient() {
     },
   });
   return { client, config };
+}
+
+export async function clearSupabaseAuthCookies() {
+  const cookieStore = await cookies();
+  for (const cookie of cookieStore.getAll()) {
+    if (
+      cookie.name === SUPABASE_AUTH_COOKIE_NAME ||
+      cookie.name.startsWith(`${SUPABASE_AUTH_COOKIE_NAME}.`) ||
+      cookie.name.startsWith(`${SUPABASE_AUTH_COOKIE_NAME}-`) ||
+      cookie.name === "cme-supabase-pkce" ||
+      cookie.name.startsWith("cme-supabase-pkce.") ||
+      cookie.name.startsWith("cme-supabase-pkce-")
+    ) {
+      cookieStore.set(cookie.name, "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+      });
+    }
+  }
 }
 
 export async function bestEffortLocalSupabaseSignOut(
@@ -105,6 +130,30 @@ export async function bestEffortLocalSupabaseSignOut(
   } catch (error) {
     console.error("Supabase session cleanup failed", {
       operation: "provider-session-cleanup",
+      errorClass: error instanceof Error ? error.name : "UnknownError",
+    });
+  }
+}
+
+export async function bestEffortWelcomeEmail(
+  client: SupabaseClient,
+  user: User,
+) {
+  if (!user.id || !user.email || !user.email_confirmed_at) return;
+  try {
+    const { error } = await client.functions.invoke("send-welcome-email", {
+      method: "POST",
+      body: {},
+    });
+    if (error) {
+      console.error("Welcome email request failed", {
+        operation: "welcome-email",
+        errorClass: error.name,
+      });
+    }
+  } catch (error) {
+    console.error("Welcome email request failed", {
+      operation: "welcome-email",
       errorClass: error instanceof Error ? error.name : "UnknownError",
     });
   }

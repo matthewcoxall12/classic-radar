@@ -2,6 +2,9 @@ import { cookies } from "next/headers";
 import { safeRelativeReturnPath } from "@/lib/auth-return-path";
 import { RETURN_COOKIE, siteOrigin } from "@/lib/auth-security";
 import {
+  hasPendingReauthentication,
+} from "@/lib/app-auth";
+import {
   createSupabaseRouteClient,
   SupabaseAuthConfigurationError,
 } from "@/lib/supabase-auth";
@@ -22,12 +25,15 @@ export async function GET(request: Request) {
       maxAge: 10 * 60,
     });
     const { client } = await createSupabaseRouteClient();
+    const reauthenticating = await hasPendingReauthentication();
     const { data, error } = await client.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${siteOrigin(request)}/auth/callback`,
         skipBrowserRedirect: true,
-        queryParams: { prompt: "select_account" },
+        queryParams: reauthenticating
+          ? { prompt: "select_account", max_age: "0" }
+          : { prompt: "select_account" },
       },
     });
     if (error || !data.url) throw error ?? new Error("No OAuth URL returned.");

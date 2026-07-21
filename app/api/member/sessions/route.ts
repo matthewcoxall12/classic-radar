@@ -1,20 +1,31 @@
-import { jsonMemberError, jsonOk, requireMember } from "@/lib/member-data";
+import {
+  recordAuthEvent,
+  requireAuthenticatedMutation,
+} from "@/lib/app-auth";
+import { jsonMemberError, jsonOk, MemberApiError } from "@/lib/member-data";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
 export async function DELETE(request: Request) {
   try {
-    const { db, member, user } = await requireMember(request);
-    const now = Math.floor(Date.now() / 1000);
-    const result = await db
-      .prepare(
-        `UPDATE auth_sessions SET revoked_at = ?
-         WHERE member_id = ? AND revoked_at IS NULL AND expires_at > ?
-           AND id <> ?`,
-      )
-      .bind(now, member.id, now, user.sessionId)
-      .run();
-    return jsonOk({ revoked: Number(result.meta.changes ?? 0) });
+    const user = await requireAuthenticatedMutation(request);
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.auth.signOut({ scope: "others" });
+    if (error) {
+      throw new MemberApiError(
+        503,
+        "SESSION_REVOCATION_UNAVAILABLE",
+        "Other signed-in sessions could not be revoked. Please try again.",
+      );
+    }
+    await recordAuthEvent(
+      user.memberId,
+      "other_sessions_revoked",
+      user.provider,
+      user.sessionId,
+    );
+    return jsonOk({ revoked: true });
   } catch (error) {
     return jsonMemberError(error);
   }

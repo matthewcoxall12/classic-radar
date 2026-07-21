@@ -1,4 +1,4 @@
-import { jsonMemberError, jsonOk, MemberApiError, readMemberJson, requestValue, requireId, requireMember } from "@/lib/member-data";
+import { jsonMemberError, jsonOk, memberEntitlements, MemberApiError, readMemberJson, requestValue, requireId, requireMember } from "@/lib/member-data";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const exists = await supabase.from("events").select("id").eq("id", eventId).eq("status", "published").maybeSingle();
     if (exists.error || !exists.data) throw new MemberApiError(404, "EVENT_NOT_FOUND", "That event is unavailable.");
     const count = await supabase.from("saved_events").select("event_id", { count: "exact", head: true }).eq("user_id", user.memberId);
-    if ((count.count ?? 0) >= (member.tier === "roadbook" ? 1_000 : 200)) throw new MemberApiError(409, "SAVED_EVENT_LIMIT_REACHED", "This account has reached its saved-event limit.");
+    if ((count.count ?? 0) >= (memberEntitlements(member).canUseRoadbooks ? 1_000 : 200)) throw new MemberApiError(409, "SAVED_EVENT_LIMIT_REACHED", "This account has reached its saved-event limit.");
     const { data, error } = await supabase.from("saved_events").upsert({ user_id: user.memberId, event_id: eventId }, { onConflict: "user_id,event_id" }).select("event_id,created_at").single();
     if (error || !data) throw error ?? new Error("The event could not be saved.");
     return jsonOk({ saved: { eventId: data.event_id, savedAt: data.created_at } }, { status: 201 });

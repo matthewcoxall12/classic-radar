@@ -149,7 +149,7 @@ export function randomToken(bytes = 32): string {
     .replace(/=+$/g, "");
 }
 
-function timingSafeTextEqual(left: string, right: string) {
+export function timingSafeTextEqual(left: string, right: string) {
   const leftBytes = new TextEncoder().encode(left);
   const rightBytes = new TextEncoder().encode(right);
   if (leftBytes.length !== rightBytes.length) return false;
