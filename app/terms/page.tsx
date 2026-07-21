@@ -1,8 +1,83 @@
 import type { Metadata } from "next";
-import { ContentPage } from "@/components/ContentPage";
+import Link from "next/link";
+import SecondaryPageShell from "@/components/secondary-page-shell";
+import { mailto, SITE_EMAILS } from "@/lib/site-contact";
 
-export const metadata: Metadata = { title: "Terms of use", description: "Terms for using the ClassicsGo classic car event finder.", alternates: { canonical: "/terms" } };
+export const metadata: Metadata = {
+  title: "Membership terms | ClassicsGo",
+  description:
+    "Plain-language terms for ClassicsGo free accounts, Roadbook trials and paid membership.",
+  alternates: { canonical: "/terms" },
+};
 
 export default function TermsPage() {
-  return <ContentPage eyebrow="Legal" title="Terms of use" intro="These terms apply when you browse ClassicsGo, create an account or submit event information. Last updated 20 July 2026."><h2>Using ClassicsGo</h2><p>You may use ClassicsGo for lawful personal or organisational event discovery. You must not attempt to bypass security, interfere with the service, scrape it in a way that degrades availability, impersonate another person or submit content you know is false or unlawful.</p><h2>Event information</h2><p>ClassicsGo aggregates public event information and links to organisers. Dates, venues, prices, availability and cancellation status can change. Always confirm details with the official organiser before travelling, booking accommodation or spending money. ClassicsGo is not the event organiser or ticket seller unless a page clearly states otherwise.</p><h2>Accounts</h2><p>You are responsible for controlling access to the Google account used to sign in and for promptly reporting suspected account misuse. We may restrict an account to protect users, investigate abuse or comply with law.</p><h2>Submissions</h2><p>You confirm that information you submit is accurate to the best of your knowledge and that ClassicsGo may review, edit, merge, publish or reject it. Do not submit private contact details or material you do not have permission to share.</p><h2>Membership and payments</h2><p>The Roadbook plan is currently described as coming soon and no subscription is formed by creating a free account. Before paid access opens, the price, billing frequency, renewal, cancellation and refund terms will be shown at checkout.</p><h2>Third-party services</h2><p>Links to organisers, social networks and ticket services are provided for convenience. Those services are independent and their own terms apply. Google sign-in is supplied by Google and authentication infrastructure is supplied by Supabase.</p><h2>Availability and liability</h2><p>We work to keep the service accurate and available but cannot guarantee uninterrupted access or complete event coverage. Nothing in these terms excludes liability that cannot lawfully be excluded. Subject to that, ClassicsGo is not responsible for indirect loss arising from reliance on third-party event information.</p><h2>Changes and contact</h2><p>We may update these terms as the service develops. Material changes will be dated and, where appropriate, notified in the app. Questions can be sent to <a href="mailto:support@classicsgo.com">support@classicsgo.com</a>. These terms are governed by the laws of England and Wales, subject to any mandatory consumer protections that apply where you live.</p></ContentPage>;
+  return (
+    <SecondaryPageShell
+      eyebrow="Membership terms"
+      title="A straightforward deal for better weekends"
+      intro="These terms explain free accounts, the Roadbook trial and paid membership in plain language."
+      note="Last updated 19 July 2026"
+    >
+      <section className="privacy-section">
+        <div className="shell privacy-layout">
+          <nav aria-label="Membership terms contents">
+            <a href="#service">The service</a>
+            <a href="#free">Free accounts</a>
+            <a href="#trial">Roadbook trial</a>
+            <a href="#paid">Paid membership</a>
+            <a href="#renewal">Renewal and cancellation</a>
+            <a href="#events">Event information</a>
+            <a href="#changes">Changes and support</a>
+          </nav>
+          <article className="privacy-copy">
+            <p className="privacy-lead">
+              ClassicsGo keeps discovery and official event links
+              free. Roadbook Member charges for additional planning,
+              personalisation and alert tools—not access to basic event facts.
+            </p>
+
+            <section id="service">
+              <h2>The service</h2>
+              <p>ClassicsGo is currently an early-access service. Features may develop as coverage and club partnerships grow. You must provide accurate account information and use the service lawfully.</p>
+            </section>
+
+            <section id="free">
+              <h2>Free accounts</h2>
+              <p>A free account can sync saved events, mark events as Going, hold one home area, export individual calendar entries and show in-account reminders as saved event dates approach. Going totals are public, but the service does not publish attendee identities. There is no charge for a free account.</p>
+            </section>
+
+            <section id="trial">
+              <h2>Roadbook trial</h2>
+              <p>An eligible account may start one 14-day Roadbook trial. The app-level trial does not require payment details and does not automatically become a paid subscription. Paid features return to the free level when it expires unless you choose a plan.</p>
+            </section>
+
+            <section id="paid">
+              <h2>Paid membership</h2>
+              <p>Roadbook Member is offered at £2.99 monthly or £24.99 yearly, including applicable consumer taxes shown at checkout. A limited founding offer may reduce the first annual payment to £19.99; unless the checkout states otherwise, later annual renewals use the standard annual price then in force.</p>
+              <p>Paid features include the entitlement set displayed before checkout. Partner discounts, priority access and competitions depend on participating partners and are not guaranteed to save a particular amount.</p>
+            </section>
+
+            <section id="renewal">
+              <h2>Renewal and cancellation</h2>
+              <p>Paid plans renew automatically at the interval and price disclosed at checkout until cancelled. You can cancel online from the billing area of your account; cancellation stops future renewal and paid access normally continues until the end of the paid period. Any statutory cancellation, refund or cooling-off rights remain unaffected.</p>
+            </section>
+
+            <section id="events">
+              <h2>Event information</h2>
+              <p>Listings are discovery information, not tickets or a guarantee that an event will proceed. Always check the linked organiser page before travelling. Organisers remain responsible for their event, admission, safety and terms.</p>
+            </section>
+
+            <section id="changes">
+              <h2>Changes and support</h2>
+              <p>ClassicsGo is operated by Matthew Coxall. Paid checkout is not currently open. Before it is enabled, these terms will include the service address and any additional information required for a paid consumer contract. Customer-support questions can be sent to <a href={mailto(SITE_EMAILS.support)}>{SITE_EMAILS.support}</a>; privacy and data requests can be sent to <a href={mailto(SITE_EMAILS.privacy)}>{SITE_EMAILS.privacy}</a> or through the privacy-request page.</p>
+              <div className="terms-actions">
+                <Link className="privacy-request-link" href="/privacy-request">Privacy request</Link>
+                <Link className="terms-secondary-link" href="/membership">Compare membership</Link>
+              </div>
+            </section>
+          </article>
+        </div>
+      </section>
+    </SecondaryPageShell>
+  );
 }

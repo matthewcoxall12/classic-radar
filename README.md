@@ -1,38 +1,65 @@
 # ClassicsGo
 
-ClassicsGo is a production Next.js application for finding classic-car shows, club meets, autojumbles, museum days, road runs and historic-motorsport events across the United Kingdom and Europe.
+ClassicsGo is a UK and European classic-car event finder. This repository is
+the production Next.js application and preserves the approved Sites-v13
+presentation while running on Vercel and Supabase.
 
 ## Production architecture
 
-- Next.js 16 on Vercel
-- Google OAuth through Supabase Auth
-- Supabase Postgres with Row Level Security
-- GitHub Actions event discovery daily at 03:17 UTC, plus manual dispatch
-- Supabase Edge Function ingestion authenticated with GitHub OIDC
-- No hardcoded or demo events
-- No Supabase Cron, Vercel Cron, long-lived CI database key, or email/password dependency
+- Next.js 16 App Router deployed through Vercel's Git integration
+- Supabase Auth for Google identity
+- Supabase Postgres with row-level security for events, member data, review
+  queues and discovery provenance
+- a Supabase Edge Function for authenticated event ingestion
+- GitHub Actions for six-hourly discovery, authenticated to the Edge Function
+  with short-lived GitHub OIDC tokens
+- Vercel runtime logs plus a scheduled GitHub Actions smoke monitor
 
-## Commands
+Public event reads expose only reviewed, published rows. Discovery findings go
+to a private review queue and are never auto-published. Google sign-in is the
+supported public-beta identity flow. Email/password, public submissions and
+paid membership remain fail-closed until their provider configuration and
+end-to-end acceptance tests are complete.
 
-```sh
+## Local development
+
+Use Node.js `24.14.0`; `.node-version` and `.nvmrc` carry the exact development
+and CI version. Vercel is configured through `engines.node` for the supported
+`24.x` runtime line.
+
+```bash
 npm ci
-npm run typecheck
+npm run dev
+```
+
+Copy `.env.example` to `.env.local` and provide only development values. Never
+commit production secrets.
+
+## Verification
+
+```bash
 npm run lint
+npm run typecheck
+npm test
 npm run build
-npm run test:discovery
+npm audit
 ```
 
-A safe local discovery sample does not write to the database:
+The pull-request workflow runs the locked install, production dependency audit,
+lint, type-check, complete tests and production build. Vercel creates the
+preview deployment independently. Production promotion remains an explicit
+owner action after review; do not manually deploy a PR branch to production.
 
-```sh
-DISCOVERY_DRY_RUN=true \
-DISCOVERY_SOURCE_URL=https://www.britishmotormuseum.co.uk/whats-on \
-DISCOVERY_SOURCE_NAME="British Motor Museum" \
-DISCOVERY_DETAIL_LIMIT=2 npm run discover
-```
+## Operations
 
-See [docs/event-discovery.md](docs/event-discovery.md) for extraction, scheduling, security and retention details.
+- `docs/PRODUCTION_LAUNCH.md` — launch gates and owner-only configuration
+- `docs/AUTH_SETUP.md` — Google, optional email and account-security setup
+- `docs/DISCOVERY_ARCHITECTURE.md` — discovery data flow and source controls
+- `docs/DISCOVERY_INGEST.md` — GitHub OIDC ingestion operations
+- `docs/MONITORING_RUNBOOK.md` — monitoring, incidents and rollback
+- `docs/BILLING_SETUP.md` — deferred Stripe enablement
 
-## Public configuration
-
-The website needs `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. Set `NEXT_PUBLIC_SITE_URL=https://classicsgo.com` for canonical production metadata. No service-role, cron, agent or search-provider secret belongs in Vercel.
+Database changes are forward-only SQL files in `supabase/migrations/`. Edge
+Functions live in `supabase/functions/`. Apply migrations and function changes
+through the reviewed Supabase deployment process; never edit production tables
+manually to bypass a migration.

@@ -1,0 +1,45 @@
+name: Production uptime monitor
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: classicsgo-production-monitor
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # Monitor Vercel before DNS cutover. Set the CLASSICSGO_MONITOR_URL
+      # repository variable to https://classicsgo.com after the domain moves.
+      BASE_URL: ${{ vars.CLASSICSGO_MONITOR_URL || 'https://classic-radar.vercel.app' }}
+    steps:
+      - name: Check dependency health
+        run: |
+          curl --proto '=https' --tlsv1.2 --silent --show-error --fail \
+            --retry 2 --retry-all-errors --max-time 20 \
+            "$BASE_URL/api/health" --output health.json
+          grep -q '"status":"ok"' health.json
+
+      - name: Check public pages
+        run: |
+          for path in / /sign-in; do
+            curl --proto '=https' --tlsv1.2 --silent --show-error --fail \
+              --retry 2 --retry-all-errors --max-time 20 \
+              "$BASE_URL$path" --output page.html
+            grep -qi 'ClassicsGo' page.html
+          done
+
+      - name: Check public event API
+        run: |
+          curl --proto '=https' --tlsv1.2 --silent --show-error --fail \
+            --retry 2 --retry-all-errors --max-time 20 \
+            "$BASE_URL/api/events?limit=1" --output events.json
+          grep -q '"events"' events.json

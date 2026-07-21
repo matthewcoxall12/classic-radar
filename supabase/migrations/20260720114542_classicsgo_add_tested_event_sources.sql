@@ -1,0 +1,60 @@
+-- Additional official calendars validated against the production parser.
+insert into public.source_registry (
+  source_key,
+  source_name,
+  domain,
+  start_url,
+  source_type,
+  format_hint,
+  country_code,
+  region,
+  priority_weight,
+  crawl_frequency,
+  requires_review,
+  is_active,
+  notes
+) values
+  (
+    'hscc-events',
+    'Historic Sports Car Club',
+    'hscc.org.uk',
+    'https://hscc.org.uk/events/',
+    'motorsport',
+    'html',
+    'GB',
+    null,
+    97,
+    'daily',
+    true,
+    true,
+    'Official public calendar with structured dates and venue locations; validated against the review-only parser.'
+  ),
+  (
+    'veteran-car-run',
+    'RM Sotheby''s London to Brighton Veteran Car Run',
+    'veterancarrun.com',
+    'https://www.veterancarrun.com/',
+    'organiser',
+    'html',
+    'GB',
+    'South East England',
+    94,
+    'daily',
+    true,
+    true,
+    'Official organiser page with structured event data; validated against the review-only parser.'
+  )
+on conflict (source_key) do update set
+  source_name = excluded.source_name,
+  domain = excluded.domain,
+  start_url = excluded.start_url,
+  source_type = excluded.source_type,
+  format_hint = excluded.format_hint,
+  country_code = excluded.country_code,
+  region = excluded.region,
+  priority_weight = excluded.priority_weight,
+  crawl_frequency = excluded.crawl_frequency,
+  requires_review = excluded.requires_review,
+  is_active = excluded.is_active,
+  notes = excluded.notes,
+  updated_at = now();

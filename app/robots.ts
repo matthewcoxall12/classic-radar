@@ -1,6 +1,28 @@
 import type { MetadataRoute } from "next";
-import { siteUrl } from "@/lib/site";
+import { publicSiteUrl } from "@/lib/site-url";
 
 export default function robots(): MetadataRoute.Robots {
-  return { rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/account", "/auth", "/api"] }, sitemap: new URL("/sitemap.xml", siteUrl()).toString(), host: siteUrl().origin };
+  const origin = publicSiteUrl().origin;
+  return {
+    rules: {
+      userAgent: "*",
+      allow: "/",
+      disallow: [
+        "/account",
+        "/account-deleted",
+        "/admin",
+        "/api/",
+        "/auth/",
+        "/check-email",
+        "/forgot-password",
+        "/privacy-request",
+        "/reset-password",
+        "/roadbook/",
+        "/sign-in",
+        "/sign-up",
+      ],
+    },
+    host: origin,
+    sitemap: `${origin}/sitemap.xml`,
+  };
 }
