@@ -37,6 +37,7 @@ export async function approveReviewItem(formData: FormData) {
   if (itemError || !item) return;
 
   const proposed = item.proposed_event as ProposedEvent;
+  if (["members_only", "restricted_or_unconfirmed"].includes(String(proposed.access_status ?? ""))) return;
   const proposedId = String(proposed.id ?? "");
   const title = formOrProposed(formData, "title", proposed, "Reviewed event").slice(0, 180);
   const startDate = formOrProposed(formData, "start_date", proposed, new Date().toISOString().slice(0, 10)).slice(0, 10);
@@ -45,7 +46,7 @@ export async function approveReviewItem(formData: FormData) {
   const eventPatch = {
     title,
     description: formOrProposed(formData, "description", proposed).slice(0, 4_000),
-    event_type: formOrProposed(formData, "event_type", proposed, "Classic car show").slice(0, 80),
+    event_type: (formOrProposed(formData, "event_type", proposed, "Club meet") === "club_meet" ? "Club meet" : formOrProposed(formData, "event_type", proposed, "Club meet")).slice(0, 80),
     start_date: startDate,
     start_time: proposed.start_time ? String(proposed.start_time) : null,
     end_date: proposed.end_date ? String(proposed.end_date) : null,
