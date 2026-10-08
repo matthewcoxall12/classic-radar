@@ -125,7 +125,7 @@ export default async function EventDetailPage({ params }: PageProps) {
         <Link href="/events?radius=uk">Events</Link> / {event.event_type}
       </nav>
       <div className="detail-hero">
-        <EventImage type={event.event_type} seed={event.id} priority />
+        <EventImage type={event.event_type} seed={event.id} sizes="(max-width: 1280px) 100vw, 1200px" priority />
       </div>
       <div className="detail-layout">
         <article>
