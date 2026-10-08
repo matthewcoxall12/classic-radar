@@ -15,3 +15,6 @@ See /photography for original source links, authors, licences and adapted image 
 
 ## Opening image refinement
 The smaller homepage opening image shows an imagined informal village-hall meet with an Austin A35 van, everyday cars and people with tea. It is labelled as AI generated and is not used as event evidence. The hero now has inset margins and a 3:2 image rather than the previous full-height photograph.
+
+## Event imagery
+Reviewed photographs show the corresponding event, with previous-edition years made explicit. Calm date panels replace missing event photos. Image credits sit outside the image; the photography page retains source, creator and licence details. The local manifest is deliberately separate from automatically discovered image URLs.

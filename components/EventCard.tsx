@@ -2,6 +2,7 @@ import { ArrowUpRight, CalendarDays, MapPin } from "lucide-react";
 import Link from "next/link";
 import { EventActions } from "@/components/EventActions";
 import { EventImage } from "@/components/EventImage";
+import { getEventPhotograph } from "@/lib/event-photography";
 import type { ClassicEvent } from "@/lib/types";
 import { formatEventDate, locationLabel, safeExternalUrl } from "@/lib/utils";
 type Props = {
@@ -18,6 +19,7 @@ export function EventCard({
   signedIn = false,
   canSave = false,
 }: Props) {
+  const photo = getEventPhotograph(event.slug);
   const href = `/events/${event.slug}`;
   const officialUrl =
     safeExternalUrl(event.booking_url) || safeExternalUrl(event.organiser_url);
@@ -28,9 +30,15 @@ export function EventCard({
   return (
     <article className="event-card">
       <div className="event-card-photo">
-        <EventImage type={event.event_type} seed={event.id} />
+        <EventImage type={event.event_type} event={event} />
       </div>
       <div className="event-card-body">
+        {photo && (
+          <p className="event-photo-note">
+            {photo.context} ·{" "}
+            <Link href={`/photography#${event.slug}`}>Photo credits</Link>
+          </p>
+        )}
         <div className="event-card-tags">
           <span>{event.event_type}</span>
           <span

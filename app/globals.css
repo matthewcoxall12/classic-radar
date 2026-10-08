@@ -1135,3 +1135,68 @@ button:disabled {
     font-size: 10px;
   }
 }
+
+.event-date-panel {
+  height: 100%;
+  background: #eef0e8;
+  color: var(--green);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-bottom: 1px solid #dbe1d4;
+}
+.date-panel-top,
+.date-panel-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.date-panel-top {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.date-panel-date {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.date-panel-date strong {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 76px;
+  line-height: 1;
+  font-weight: 500;
+}
+.date-panel-date > span {
+  font-size: 22px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.date-panel-date small {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  margin-top: 5px;
+}
+.date-panel-bottom {
+  font-size: 10px;
+  color: var(--muted);
+}
+.event-photo-note {
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+.event-photo-note a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.detail-photo-note {
+  margin-top: 12px;
+}
+.detail-hero:has(.event-date-panel) {
+  height: 210px;
+}

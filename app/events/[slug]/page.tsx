@@ -3,7 +3,7 @@ import { CalendarDays, ExternalLink, MapPin, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { EventImage } from "@/components/EventImage";
 import { EventCard } from "@/components/EventCard";
-import { eventPhotograph } from "@/lib/photography";
+import { getEventPhotograph } from "@/lib/event-photography";
 import { notFound } from "next/navigation";
 import { ConfidenceBadge } from "@/components/ConfidenceBadge";
 import { EventActions } from "@/components/EventActions";
@@ -23,19 +23,23 @@ export async function generateMetadata({
   const description =
     event.description ||
     `${event.title} classic car event details, date, location and official organiser link.`;
-  const image =
-    safeExternalUrl(event.image_url) ||
-    eventPhotograph(event.event_type, event.id).src;
+  const image = getEventPhotograph(event.slug)?.src;
   return {
     title: event.title,
     description: description.slice(0, 160),
     alternates: { canonical: `/events/${event.slug}` },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title: event.title,
+      description: description.slice(0, 160),
+      images: image ? [image] : [],
+    },
     openGraph: {
       type: "article",
       title: event.title,
       description: description.slice(0, 160),
       url: `/events/${event.slug}`,
-      images: [image],
+      images: image ? [image] : [],
     },
   };
 }
@@ -47,6 +51,7 @@ export default async function EventDetailPage({ params }: PageProps) {
     getViewer(),
   ]);
   if (!event) notFound();
+  const photo = getEventPhotograph(event.slug);
   const officialUrl =
     safeExternalUrl(event.booking_url) || safeExternalUrl(event.organiser_url);
   const organiserUrl = safeExternalUrl(event.organiser_url);
@@ -75,9 +80,7 @@ export default async function EventDetailPage({ params }: PageProps) {
         .filter(Boolean)
         .join(", "),
     },
-    image:
-      safeExternalUrl(event.image_url) ||
-      absoluteUrl(eventPhotograph(event.event_type, event.id).src),
+    image: photo ? absoluteUrl(photo.src) : undefined,
     url: absoluteUrl(`/events/${event.slug}`),
     organizer: event.organiser_name
       ? {
@@ -125,8 +128,19 @@ export default async function EventDetailPage({ params }: PageProps) {
         <Link href="/events?radius=uk">Events</Link> / {event.event_type}
       </nav>
       <div className="detail-hero">
-        <EventImage type={event.event_type} seed={event.id} sizes="(max-width: 1280px) 100vw, 1200px" priority />
+        <EventImage
+          type={event.event_type}
+          event={event}
+          sizes="(max-width: 1280px) 100vw, 1200px"
+          priority
+        />
       </div>
+      {photo && (
+        <p className="event-photo-note detail-photo-note">
+          {photo.context} · Photograph by {photo.credit}.{" "}
+          <Link href={`/photography#${event.slug}`}>Source &amp; licence</Link>
+        </p>
+      )}
       <div className="detail-layout">
         <article>
           <div className="flex flex-wrap gap-2">
