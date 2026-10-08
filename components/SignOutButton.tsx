@@ -13,6 +13,8 @@ export function SignOutButton() {
       onClick={async () => {
         setPending(true);
         await createClient().auth.signOut({ scope: "local" });
+        // Reload after authentication cookie changes to clear the previous account context.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.assign("/");
       }}
       className="focus-ring inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-ink/15 bg-paper px-4 text-sm font-bold text-ink"

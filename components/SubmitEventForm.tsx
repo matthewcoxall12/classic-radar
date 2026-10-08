@@ -19,7 +19,7 @@ export function SubmitEventForm() {
       <button disabled={pending} className="focus-ring rounded-md bg-racing px-4 py-2 text-sm font-black text-paper disabled:opacity-60">
         {pending ? "Submitting..." : "Submit for review"}
       </button>
-      {state.message ? <p className={`text-sm font-bold ${state.ok ? "text-racing" : "text-oxblood"}`}>{state.message}</p> : null}
+      {state.message ? <p role={state.ok ? "status" : "alert"} className={`text-sm font-bold ${state.ok ? "text-racing" : "text-oxblood"}`}>{state.message}</p> : null}
     </form>
   );
 }

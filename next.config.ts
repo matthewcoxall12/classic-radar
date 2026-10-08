@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' https://accounts.google.com",
               "style-src 'self' 'unsafe-inline' https://accounts.google.com",
               "font-src 'self' data:",
-              "img-src 'self' data: blob: https://accounts.google.com https://*.googleusercontent.com",
+              "img-src 'self' data: blob: https://accounts.google.com https://*.googleusercontent.com https://tile.openstreetmap.org",
               "connect-src 'self' https://rnayhhsurmztrohtftqo.supabase.co wss://rnayhhsurmztrohtftqo.supabase.co https://accounts.google.com",
               "frame-src https://accounts.google.com",
               "worker-src 'self' blob:",

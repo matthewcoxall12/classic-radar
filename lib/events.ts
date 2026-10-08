@@ -1,6 +1,12 @@
+import { dateRange, sortLocalEvents } from "@/lib/event-search";
 import { geocodeLocation, hasValidCoordinatePair } from "@/lib/geocoding";
 import { createClient } from "@/lib/supabase/server";
-import type { AgentRun, ClassicEvent, ReviewQueueItemType, SourceRegistryEntry } from "@/lib/types";
+import type {
+  AgentRun,
+  ClassicEvent,
+  ReviewQueueItemType,
+  SourceRegistryEntry,
+} from "@/lib/types";
 
 export const eventTypes = [
   "Classic car show",
@@ -12,7 +18,7 @@ export const eventTypes = [
   "Museum / venue event",
   "American / hot rod",
   "Vintage / pre-war",
-  "Marque-specific"
+  "Marque-specific",
 ] as const;
 
 export type EventSearchParams = {
@@ -24,56 +30,54 @@ export type EventSearchParams = {
   date?: string;
   types?: string[];
   page?: string;
+  sort?: string;
 };
 
-function dateRange(filter?: string) {
-  const now = new Date();
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  if (filter === "weekend") {
-    const daysUntilSaturday = (6 - start.getUTCDay() + 7) % 7;
-    const saturday = new Date(start);
-    saturday.setUTCDate(start.getUTCDate() + daysUntilSaturday);
-    const sunday = new Date(saturday);
-    sunday.setUTCDate(saturday.getUTCDate() + 1);
-    return { start: isoDate(saturday), end: isoDate(sunday) };
-  }
-  if (filter === "7" || filter === "30") {
-    const end = new Date(start);
-    end.setUTCDate(start.getUTCDate() + Number(filter));
-    return { start: isoDate(start), end: isoDate(end) };
-  }
-  return { start: isoDate(start), end: null };
-}
-
-function isoDate(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-export async function getEvents(params: EventSearchParams = {}, limit = 200): Promise<ClassicEvent[]> {
+export async function getEvents(
+  params: EventSearchParams = {},
+  limit = 200,
+): Promise<ClassicEvent[]> {
   const range = dateRange(params.date);
   const supabase = await createClient();
   const origin = hasValidCoordinatePair(params.lat, params.lng)
-    ? { latitude: Number(params.lat), longitude: Number(params.lng), label: "Current location" }
+    ? {
+        latitude: Number(params.lat),
+        longitude: Number(params.lng),
+        label: "Current location",
+      }
     : await geocodeLocation(params.location);
-  const isLocalSearch = Boolean(params.location?.trim() || hasValidCoordinatePair(params.lat, params.lng));
+  const isLocalSearch = Boolean(
+    params.location?.trim() || hasValidCoordinatePair(params.lat, params.lng),
+  );
   if (isLocalSearch && !origin) return [];
 
   let events: ClassicEvent[] = [];
   const radius = Number(params.radius || 50);
-  if (origin && Number.isFinite(radius) && !["uk", "europe"].includes(params.radius || "")) {
+  if (
+    origin &&
+    Number.isFinite(radius) &&
+    !["uk", "europe"].includes(params.radius || "")
+  ) {
     const { data, error } = await supabase.rpc("events_nearby", {
       p_latitude: origin.latitude,
       p_longitude: origin.longitude,
       p_radius_miles: Math.min(250, Math.max(1, radius)),
-      p_limit: Math.min(200, Math.max(1, limit))
+      p_limit: Math.min(200, Math.max(1, limit)),
     });
     if (error || !data) {
       console.error("ClassicsGo nearby event query failed", error?.message);
       return [];
     }
     events = data as ClassicEvent[];
-    events = events.filter((event) => event.start_date >= range.start && (!range.end || event.start_date <= range.end));
-    if (params.types?.length) events = events.filter((event) => params.types!.includes(event.event_type));
+    events = events.filter(
+      (event) =>
+        event.start_date >= range.start &&
+        (!range.end || event.start_date <= range.end),
+    );
+    if (params.types?.length)
+      events = events.filter((event) =>
+        params.types!.includes(event.event_type),
+      );
   } else {
     const page = Math.max(1, Number.parseInt(params.page || "1", 10) || 1);
     const resultsPerPage = params.page ? Math.max(1, limit - 1) : limit;
@@ -88,9 +92,15 @@ export async function getEvents(params: EventSearchParams = {}, limit = 200): Pr
     if (range.end) query = query.lte("start_date", range.end);
     if (params.types?.length) query = query.in("event_type", params.types);
     if (params.radius === "uk") query = query.eq("country_code", "GB");
-    const databaseText = params.q?.trim().replace(/[^\p{L}\p{N}\s&'-]/gu, " ").replace(/\s+/g, " ").slice(0, 120);
+    const databaseText = params.q
+      ?.trim()
+      .replace(/[^\p{L}\p{N}\s&'-]/gu, " ")
+      .replace(/\s+/g, " ")
+      .slice(0, 120);
     if (databaseText) {
-      query = query.or(`title.ilike.%${databaseText}%,description.ilike.%${databaseText}%,venue_name.ilike.%${databaseText}%,town.ilike.%${databaseText}%,county.ilike.%${databaseText}%,organiser_name.ilike.%${databaseText}%`);
+      query = query.or(
+        `event_type.ilike.%${databaseText}%,title.ilike.%${databaseText}%,description.ilike.%${databaseText}%,venue_name.ilike.%${databaseText}%,town.ilike.%${databaseText}%,county.ilike.%${databaseText}%,organiser_name.ilike.%${databaseText}%`,
+      );
     }
     const { data, error } = await query;
     if (error || !data) {
@@ -103,10 +113,21 @@ export async function getEvents(params: EventSearchParams = {}, limit = 200): Pr
   const text = params.q?.trim().toLocaleLowerCase("en-GB");
   if (text) {
     events = events.filter((event) =>
-      [event.title, event.description, event.venue_name, event.town, event.county, event.event_type, event.organiser_name]
+      [
+        event.title,
+        event.description,
+        event.venue_name,
+        event.town,
+        event.county,
+        event.event_type,
+        event.organiser_name,
+      ]
         .filter(Boolean)
-        .some((value) => value!.toLocaleLowerCase("en-GB").includes(text))
+        .some((value) => value!.toLocaleLowerCase("en-GB").includes(text)),
     );
+  }
+  if (origin && !["uk", "europe"].includes(params.radius || "")) {
+    events = sortLocalEvents(events, params.sort);
   }
   return events;
 }
@@ -115,7 +136,9 @@ export async function getUpcomingEvents(limit = 3) {
   return getEvents({ date: "all", radius: "europe" }, limit);
 }
 
-export async function getEventBySlug(slug: string): Promise<ClassicEvent | null> {
+export async function getEventBySlug(
+  slug: string,
+): Promise<ClassicEvent | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("events")
@@ -123,20 +146,30 @@ export async function getEventBySlug(slug: string): Promise<ClassicEvent | null>
     .eq("slug", slug)
     .eq("status", "published")
     .maybeSingle();
-  if (error) console.error("ClassicsGo event detail query failed", error.message);
+  if (error)
+    console.error("ClassicsGo event detail query failed", error.message);
   return (data as ClassicEvent | null) ?? null;
 }
 
 export async function getViewerEventState(eventIds: string[], userId?: string) {
-  if (!userId || eventIds.length === 0) return { saved: new Set<string>(), going: new Set<string>() };
+  if (!userId || eventIds.length === 0)
+    return { saved: new Set<string>(), going: new Set<string>() };
   const supabase = await createClient();
   const [savedResult, goingResult] = await Promise.all([
-    supabase.from("saved_events").select("event_id").eq("user_id", userId).in("event_id", eventIds),
-    supabase.from("event_attendance").select("event_id").eq("user_id", userId).in("event_id", eventIds)
+    supabase
+      .from("saved_events")
+      .select("event_id")
+      .eq("user_id", userId)
+      .in("event_id", eventIds),
+    supabase
+      .from("event_attendance")
+      .select("event_id")
+      .eq("user_id", userId)
+      .in("event_id", eventIds),
   ]);
   return {
     saved: new Set((savedResult.data ?? []).map((row) => String(row.event_id))),
-    going: new Set((goingResult.data ?? []).map((row) => String(row.event_id)))
+    going: new Set((goingResult.data ?? []).map((row) => String(row.event_id))),
   };
 }
 
@@ -168,24 +201,37 @@ export async function getGoingEvents(userId: string): Promise<ClassicEvent[]> {
 
 export async function getAdminEvents() {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("events").select("*").order("start_date", { ascending: true });
+  const { data, error } = await supabase
+    .from("events")
+    .select("*")
+    .order("start_date", { ascending: true });
   return error ? [] : ((data as ClassicEvent[] | null) ?? []);
 }
 
 export async function getReviewQueue() {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("review_queue").select("*").order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("review_queue")
+    .select("*")
+    .order("created_at", { ascending: false });
   return error ? [] : ((data as ReviewQueueItemType[] | null) ?? []);
 }
 
 export async function getAgentRuns() {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("agent_runs").select("*").order("started_at", { ascending: false }).limit(25);
+  const { data, error } = await supabase
+    .from("agent_runs")
+    .select("*")
+    .order("started_at", { ascending: false })
+    .limit(25);
   return error ? [] : ((data as AgentRun[] | null) ?? []);
 }
 
 export async function getSourceRegistry() {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("source_registry").select("*").order("priority_weight", { ascending: false });
+  const { data, error } = await supabase
+    .from("source_registry")
+    .select("*")
+    .order("priority_weight", { ascending: false });
   return error ? [] : ((data as SourceRegistryEntry[] | null) ?? []);
 }

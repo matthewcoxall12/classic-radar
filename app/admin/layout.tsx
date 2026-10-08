@@ -29,9 +29,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <h1 className="mt-2 font-serif text-4xl font-semibold">ClassicsGo admin</h1>
         <p className="mt-2 text-muted">Event review, source health and discovery operations.</p>
       </div>
-      <nav className="mb-6 flex gap-2 overflow-x-auto">
+      <nav aria-label="Administration sections" className="mb-6 flex gap-2 overflow-x-auto">
         {adminNav.map((item) => (
-          <Link key={item.href} href={item.href} className="rounded-full border border-ink/15 bg-paper px-4 py-2 text-sm font-black text-ink hover:border-racing/40">
+          <Link key={item.href} href={item.href} className="shrink-0 min-h-11 rounded-full border border-ink/15 bg-paper px-4 py-2 text-sm font-black text-ink hover:border-racing/40">
             {item.label}
           </Link>
         ))}

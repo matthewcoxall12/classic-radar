@@ -57,9 +57,10 @@ export function LocationSearch({ defaultValue = "", defaultLatitude = "", defaul
     <div className="grid gap-2">
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
         <label className="relative block min-w-0 flex-1">
-          <span className="mb-1 block text-sm font-bold text-ink sm:hidden">Postcode, town or city</span>
-          <MapPin className="pointer-events-none absolute left-3 top-[calc(50%+10px)] h-5 w-5 -translate-y-1/2 text-racing sm:top-1/2" />
+          <span className="mb-1 block text-sm font-bold text-ink ">Postcode, town or city</span>
+          <MapPin className="pointer-events-none absolute left-3 top-[calc(50%+10px)] h-5 w-5 -translate-y-1/2 text-racing " />
           <input
+            placeholder="Postcode, town or city"
             name="location"
             defaultValue={defaultValue}
             maxLength={120}
@@ -85,7 +86,7 @@ export function LocationSearch({ defaultValue = "", defaultLatitude = "", defaul
       </div>
       <input ref={latitudeRef} type="hidden" name="lat" value={latitude} />
       <input ref={longitudeRef} type="hidden" name="lng" value={longitude} />
-      {status ? <p className="text-xs font-bold text-muted">{status}</p> : null}
+      {status ? <p role="status" className="text-xs font-bold text-muted">{status}</p> : null}
     </div>
   );
 }
