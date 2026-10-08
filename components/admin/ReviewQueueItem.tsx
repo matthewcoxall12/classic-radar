@@ -23,17 +23,14 @@ export function ReviewQueueItem({ item }: { item: ReviewQueueItemType }) {
       {rawSnippet ? <p className="mt-3 rounded-md bg-cream p-3 text-sm text-muted">{rawSnippet}</p> : null}
       <pre className="mt-3 overflow-x-auto rounded-md bg-cream p-3 text-xs text-ink">{JSON.stringify(item.proposed_event, null, 2)}</pre>
       <div className="mt-3 flex flex-wrap gap-2">
-        <form action={approveReviewItem}>
-          <input type="hidden" name="id" value={item.id} />
-          <button className="rounded-md bg-racing px-3 py-2 text-xs font-black text-paper">Approve as published</button>
-        </form>
+        <span className="rounded-md border border-racing px-3 py-2 text-xs font-black text-racing">Check the verification form below</span>
         <form action={rejectReviewItem}>
           <input type="hidden" name="id" value={item.id} />
           <button className="rounded-md bg-oxblood px-3 py-2 text-xs font-black text-paper">Reject</button>
         </form>
       </div>
       <details className="mt-3 rounded-md border border-ink/10 bg-paper p-3">
-        <summary className="cursor-pointer text-sm font-black">Edit before publishing</summary>
+        <summary className="cursor-pointer text-sm font-black">Verify and edit before publishing</summary>
         <form action={approveReviewItem} className="mt-3 grid gap-3">
           <input type="hidden" name="id" value={item.id} />
           <div className="grid gap-3 md:grid-cols-2">
@@ -45,7 +42,8 @@ export function ReviewQueueItem({ item }: { item: ReviewQueueItemType }) {
             <label className="grid gap-1 text-sm font-bold">Postcode<input name="postcode" defaultValue={String(item.proposed_event.postcode ?? "")} className="focus-ring min-h-10 rounded-md border border-ink/15 px-3" /></label>
           </div>
           <label className="grid gap-1 text-sm font-bold">Description<textarea name="description" rows={3} defaultValue={String(item.proposed_event.description ?? "")} className="focus-ring rounded-md border border-ink/15 px-3 py-2" /></label>
-          <button className="w-fit rounded-md bg-racing px-3 py-2 text-xs font-black text-paper">Publish edited event</button>
+          <label className="flex items-start gap-2 text-sm font-semibold"><input required type="checkbox" name="verified_for_publication" value="yes" /> I checked the current date and location with a credible source and confirmed whether this meeting is open to the public. Do not publish members-only or unconfirmed gatherings.</label>
+          <button className="w-fit rounded-md bg-racing px-3 py-2 text-xs font-black text-paper">Publish verified event</button>
         </form>
       </details>
       <details className="mt-3 rounded-md border border-ink/10 bg-paper p-3">
