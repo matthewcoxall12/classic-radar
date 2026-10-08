@@ -35,7 +35,7 @@ export async function createManualEvent(formData: FormData) {
     description: String(formData.get("description") ?? "").trim().slice(0, 4_000),
     status: "draft",
     confidence_score: 100,
-    is_verified: true,
+    is_verified: false,
     source_count: 0,
     last_checked_at: new Date().toISOString()
   });
@@ -50,8 +50,12 @@ export async function setEventStatus(formData: FormData) {
   const status = String(formData.get("status") ?? "");
   if (!UUID_PATTERN.test(id) || !["draft", "published", "cancelled"].includes(status)) return;
 
+  if (status === "published") {
+    const { data: event } = await supabase.from("events").select("status,is_verified,start_date,organiser_url,booking_url").eq("id", id).maybeSingle();
+    if (!event || event.status === "review" || !event.is_verified || event.start_date < new Date().toISOString().slice(0,10) || (!event.organiser_url && !event.booking_url)) return;
+  }
   const patch = status === "published"
-    ? { status, is_verified: true, last_checked_at: new Date().toISOString() }
+    ? { status, last_checked_at: new Date().toISOString() }
     : { status };
   await supabase.from("events").update(patch).eq("id", id);
   revalidatePath("/admin/events");
