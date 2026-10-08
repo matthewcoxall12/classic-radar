@@ -28,3 +28,6 @@ The existing GoogleSignIn implementation allows sign-in only on classicsgo.com a
 | Maintainability | 8 | Shared components and tokens, preserved backend, lazy map |
 
 Scores are design review judgements, not an automated accessibility certification. Club profiles and Roadbook plans/alerts are upcoming, not operational products.
+
+## Opening-image refinement — 8 October 2026
+The homepage now uses a smaller 3:2 AI-generated illustration of a worn Austin A35 van, everyday classic cars and people chatting at a village-hall meet. The visible caption, alt text and photography page identify the image as fictional. Event listing photography and published records are unchanged. Hero bounds checked at 1440px (approximately 561 x 374px) and 390px (342 x 228px), without horizontal overflow. Lint, typecheck and production build pass.

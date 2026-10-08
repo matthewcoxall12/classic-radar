@@ -10,7 +10,7 @@ import {
   getViewerEventState,
   eventTypes,
 } from "@/lib/events";
-import { photographs } from "@/lib/photography";
+import { photographs, weekendIllustration } from "@/lib/photography";
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 export default async function HomePage() {
   const [viewer, events] = await Promise.all([
@@ -40,15 +40,15 @@ export default async function HomePage() {
         </div>
         <figure className="hero-photo">
           <Image
-            src={photographs.racing.src}
-            alt={photographs.racing.alt}
+            src={weekendIllustration.src}
+            alt={weekendIllustration.alt}
             fill
             priority
-            sizes="(max-width: 800px) 100vw, 55vw"
+            sizes="(max-width: 800px) 90vw, (max-width: 1280px) 45vw, 560px"
           />
           <figcaption>
-            Jaguar E-Type, Goodwood 2014 ·{" "}
-            <Link href="/photography">Nic Redhead / CC BY-SA 2.0</Link>
+            A Sunday meet, imagined ·{" "}
+            <Link href="/photography">AI-generated illustration</Link>
           </figcaption>
         </figure>
       </section>

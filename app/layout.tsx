@@ -45,10 +45,10 @@ export const metadata: Metadata = {
     description: siteDescription,
     images: [
       {
-        url: "/images/editorial/jaguar.webp",
-        width: 1800,
-        height: 1217,
-        alt: "Group 44 Jaguar E-Type at Goodwood, illustrative photography",
+        url: "/images/editorial/weekend-out.webp",
+        width: 1536,
+        height: 1024,
+        alt: "An informal classic car meet with an Austin A35 van, AI-generated illustration",
       },
     ],
   },
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ClassicsGo | Find classic car events near you",
     description: siteDescription,
-    images: ["/images/editorial/jaguar.webp"],
+    images: ["/images/editorial/weekend-out.webp"],
   },
 };
 

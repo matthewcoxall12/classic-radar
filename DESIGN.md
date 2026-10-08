@@ -12,3 +12,6 @@ Only published Supabase events are displayed. Verification is explicit. Images a
 
 ## Photography
 See /photography for original source links, authors, licences and adapted image downloads. New image assets are compressed WebP. Event photographs are illustrative fallbacks and are not represented as organiser photographs.
+
+## Opening image refinement
+The smaller homepage opening image shows an imagined informal village-hall meet with an Austin A35 van, everyday cars and people with tea. It is labelled as AI generated and is not used as event evidence. The hero now has inset margins and a 3:2 image rather than the previous full-height photograph.

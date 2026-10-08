@@ -226,20 +226,22 @@ textarea:focus-visible {
   padding: 14px 0;
 }
 .hero {
-  max-width: 1440px;
-  margin: auto;
+  max-width: 1280px;
+  margin: 32px auto 0;
+  padding: 0 40px;
   display: grid;
-  grid-template-columns: 47% 53%;
-  min-height: 540px;
+  grid-template-columns: 1fr 0.95fr;
+  gap: 48px;
+  align-items: center;
 }
 .hero-copy {
-  padding: 74px 48px 40px max(40px, calc((100vw - 1280px) / 2 + 40px));
+  padding: 0;
   display: flex;
   align-items: flex-start;
   flex-direction: column;
 }
 .hero h1 {
-  font-size: clamp(50px, 5.1vw, 76px);
+  font-size: clamp(48px, 4.5vw, 64px);
   line-height: 0.99;
   letter-spacing: -2px;
   font-weight: 600;
@@ -266,7 +268,7 @@ textarea:focus-visible {
   font-size: 8px;
   letter-spacing: 0.18em;
   margin-top: auto;
-  padding-top: 45px;
+  padding-top: 24px;
   color: var(--muted);
 }
 .hero-photo,
@@ -281,8 +283,12 @@ textarea:focus-visible {
 .event-image img {
   object-fit: cover;
 }
+.hero-photo {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+}
 .hero-photo img {
-  object-position: 48% center;
+  object-position: center;
 }
 .hero-photo figcaption,
 .editorial-photo figcaption {
@@ -779,14 +785,12 @@ textarea:focus-visible {
   .home-events {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .hero-copy {
-    padding: 55px 32px;
-  }
   .hero {
-    min-height: 500px;
+    padding: 0 32px;
+    gap: 32px;
   }
   .hero h1 {
-    font-size: 56px;
+    font-size: 52px;
   }
   .roadbook-inner {
     gap: 50px;
@@ -802,9 +806,11 @@ textarea:focus-visible {
   }
   .hero {
     grid-template-columns: 1fr;
+    padding: 0 24px;
+    gap: 24px;
   }
   .hero-copy {
-    padding: 45px 24px 35px;
+    padding: 0;
   }
   .hero h1 {
     font-size: 54px;
@@ -816,7 +822,7 @@ textarea:focus-visible {
     padding-top: 25px;
   }
   .hero-photo {
-    height: 350px;
+    max-width: 560px;
   }
   .search-primary {
     grid-template-columns: 1fr 1fr;
@@ -874,8 +880,8 @@ textarea:focus-visible {
   .hero h1 {
     font-size: 48px;
   }
-  .hero-photo {
-    height: 270px;
+  .hero {
+    margin-top: 24px;
   }
   .hero-intro {
     font-size: 14px;
