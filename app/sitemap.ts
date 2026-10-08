@@ -5,7 +5,7 @@ import { siteUrl } from "@/lib/site";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
   const now = new Date();
-  const routes = ["", "/events", "/membership", "/clubs", "/about", "/contact", "/privacy", "/terms"];
+  const routes = ["", "/events", "/membership", "/clubs", "/about", "/contact", "/privacy", "/terms", "/photography"];
   const events = await getEvents({ radius: "europe", date: "all" }, 1000);
   return [
     ...routes.map((route) => ({ url: new URL(route || "/", base).toString(), lastModified: now, changeFrequency: route === "" || route === "/events" ? "daily" as const : "monthly" as const, priority: route === "" ? 1 : route === "/events" ? 0.9 : 0.6 })),
