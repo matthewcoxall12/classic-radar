@@ -46,8 +46,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: "/images/editorial/jaguar.webp",
-        width: 1672,
-        height: 941,
+        width: 1800,
+        height: 1217,
         alt: "Group 44 Jaguar E-Type at Goodwood, illustrative photography",
       },
     ],
