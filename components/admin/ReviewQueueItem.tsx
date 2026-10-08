@@ -23,13 +23,13 @@ export function ReviewQueueItem({ item }: { item: ReviewQueueItemType }) {
       {rawSnippet ? <p className="mt-3 rounded-md bg-cream p-3 text-sm text-muted">{rawSnippet}</p> : null}
       <pre className="mt-3 overflow-x-auto rounded-md bg-cream p-3 text-xs text-ink">{JSON.stringify(item.proposed_event, null, 2)}</pre>
       <div className="mt-3 flex flex-wrap gap-2">
-        <a href="#verify-before-publishing" className="rounded-md bg-racing px-3 py-2 text-xs font-black text-paper">Review before publishing</a>
+        <span className="rounded-md border border-racing px-3 py-2 text-xs font-black text-racing">Check the verification form below</span>
         <form action={rejectReviewItem}>
           <input type="hidden" name="id" value={item.id} />
           <button className="rounded-md bg-oxblood px-3 py-2 text-xs font-black text-paper">Reject</button>
         </form>
       </div>
-      <details id="verify-before-publishing" className="mt-3 rounded-md border border-ink/10 bg-paper p-3">
+      <details className="mt-3 rounded-md border border-ink/10 bg-paper p-3">
         <summary className="cursor-pointer text-sm font-black">Verify and edit before publishing</summary>
         <form action={approveReviewItem} className="mt-3 grid gap-3">
           <input type="hidden" name="id" value={item.id} />
