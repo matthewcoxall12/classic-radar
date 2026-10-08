@@ -25,6 +25,7 @@ export async function approveReviewItem(formData: FormData) {
   if (!context) return;
   const { supabase, viewer } = context;
   const reviewId = String(formData.get("id") ?? "");
+  if (formData.get("verified_for_publication") !== "yes") return;
   if (!UUID_PATTERN.test(reviewId)) return;
 
   const { data: item, error: itemError } = await supabase
