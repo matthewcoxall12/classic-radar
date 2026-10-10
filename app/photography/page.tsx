@@ -23,7 +23,7 @@ export default function PhotographyPage() {
         <h2>A relaxed Sunday meet</h2>
         <p>
           The homepage opening image is an AI-generated illustration of an
-          Austin A35 van, Mini, Morris Minor and MG Midget at an informal owners’ gathering. It depicts an
+          Austin A35 van, Mini, Morris Minor and MG roadster at an informal weekend owners’ gathering. It depicts an
           imagined scene, not a real event or a photograph of its attendees.
         </p>
         <p>

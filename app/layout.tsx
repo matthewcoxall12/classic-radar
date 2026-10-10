@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   applicationName: siteName,
+  verification: {
+    google: "IFlG89rlQL41RjqJ3SNNuu_ddeeGRGssHmFfY7Zq-7g",
+  },
   icons: {
     icon: [
       {
@@ -45,10 +48,10 @@ export const metadata: Metadata = {
     description: siteDescription,
     images: [
       {
-        url: "/images/editorial/weekend-meet-v2.webp",
+        url: "/images/editorial/weekend-meet-v3.webp",
         width: 1600,
         height: 800,
-        alt: "An informal village car meet with an Austin van, Mini, Morris Minor and MG Midget",
+        alt: "An imagined informal weekend meet with an Austin A35 van, Mini, Morris Minor, MG roadster and owners chatting",
       },
     ],
   },
@@ -56,7 +59,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ClassicsGo | Find classic car events near you",
     description: siteDescription,
-    images: ["/images/editorial/weekend-meet-v2.webp"],
+    images: ["/images/editorial/weekend-meet-v3.webp"],
   },
 };
 

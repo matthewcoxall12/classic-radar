@@ -3,9 +3,11 @@ import { CalendarDays, ExternalLink, MapPin, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { EventImage } from "@/components/EventImage";
 import { EventCard } from "@/components/EventCard";
+import { EventReviews } from "@/components/EventReviews";
+import { getEventReviews } from "@/lib/event-reviews";
+import { canReviewEvent, parseReviewPage } from "@/lib/event-reviews-validation";
 import { eventImageUrl } from "@/lib/event-photography";
 import { notFound } from "next/navigation";
-import { ConfidenceBadge } from "@/components/ConfidenceBadge";
 import { EventActions } from "@/components/EventActions";
 import { EventTypeBadge } from "@/components/EventTypeBadge";
 import { getViewer } from "@/lib/auth";
@@ -13,7 +15,7 @@ import { getEventBySlug, getViewerEventState, getEvents } from "@/lib/events";
 import { absoluteUrl } from "@/lib/site";
 import { formatEventDate, locationLabel, safeExternalUrl } from "@/lib/utils";
 
-type PageProps = { params: Promise<{ slug: string }> };
+type PageProps = { params: Promise<{ slug: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({
   params,
@@ -45,7 +47,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function EventDetailPage({ params }: PageProps) {
+export default async function EventDetailPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const [event, viewer] = await Promise.all([
     getEventBySlug(slug),
@@ -58,7 +60,11 @@ export default async function EventDetailPage({ params }: PageProps) {
     (cancelled ? null : safeExternalUrl(event.booking_url)) || safeExternalUrl(event.organiser_url);
   const organiserUrl = safeExternalUrl(event.organiser_url);
   const reportUrl = `mailto:matthewcoxall@googlemail.com?subject=${encodeURIComponent(`Report event listing: ${event.title}`)}&body=${encodeURIComponent(`Event: ${event.title}\nListing: ${absoluteUrl(`/events/${event.slug}`)}\nEvent ID: ${event.id}\n\nPlease tell us what is incorrect or inappropriate, including any useful public source links:\n`)}`;
-  const state = await getViewerEventState([event.id], viewer?.id);
+  const reviewPage = parseReviewPage((await searchParams)?.review_page);
+  const [state, reviews] = await Promise.all([
+    getViewerEventState([event.id], viewer?.id),
+    canReviewEvent(event) ? getEventReviews(event.id, viewer?.id, reviewPage) : Promise.resolve(null),
+  ]);
   const eventData = {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -70,6 +76,9 @@ export default async function EventDetailPage({ params }: PageProps) {
       : undefined,
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     eventStatus: cancelled ? "https://schema.org/EventCancelled" : "https://schema.org/EventScheduled",
+    aggregateRating: reviews && !reviews.unavailable && reviews.count > 0 && reviews.average != null ? {
+      "@type": "AggregateRating", ratingValue: reviews.average, reviewCount: reviews.count, bestRating: 5, worstRating: 1,
+    } : undefined,
     location: {
       "@type": "Place",
       name: event.venue_name,
@@ -143,7 +152,6 @@ export default async function EventDetailPage({ params }: PageProps) {
         <article>
           <div className="flex flex-wrap gap-2">
             <EventTypeBadge type={event.event_type} />
-            <ConfidenceBadge score={event.confidence_score} />
             <span className="verification text-xs">
               {event.is_verified
                 ? "Verified listing"
@@ -190,6 +198,7 @@ export default async function EventDetailPage({ params }: PageProps) {
             />
           </div> : <p className="mt-6 text-sm font-bold text-oxblood">Saving and marking attendance are unavailable for cancelled events.</p>}
           <p className="mt-5 text-sm text-muted">Incorrect details, duplicate listing or unsuitable content? <a href={reportUrl} className="focus-ring font-bold underline">Report this event</a>.</p>
+          <EventReviews event={event} viewerId={viewer?.id} page={reviewPage} data={reviews} />
         </article>
         <aside className="detail-panel" aria-label="Plan your visit">
           <p className="eyebrow">{cancelled ? "Cancelled event" : "Plan your visit"}</p>

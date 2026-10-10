@@ -1,0 +1,25 @@
+# Roadbook billing operations
+
+Paid checkout stays disabled until the new ClassicsGo Stripe financial account is onboarded and the complete payment flow is verified. The owner created a separate ClassicsGo account using teammakeit3d@gmail.com; onboarding remains incomplete. No prices, charges or payout changes were made.
+
+## Configuration and launch
+
+1. Complete the new ClassicsGo account merchant identity, bank/payout and Stripe onboarding requirements. Do not use an unrelated GPBox or Vroova merchant.
+2. Create two active live recurring GBP prices with licensed quantity one: annual 1500 pence every year and monthly 200 pence every month. The website verifies these exact amounts and intervals against Stripe before starting checkout. Annual saves £9 against twelve monthly payments.
+3. Configure Vercel server-only STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_ROADBOOK_ANNUAL_PRICE_ID and STRIPE_ROADBOOK_MONTHLY_PRICE_ID. SUPABASE_SECRET_KEY or existing SUPABASE_SERVICE_ROLE_KEY is needed for protected billing RPCs. Never expose secrets with NEXT_PUBLIC. Leave BILLING_ENABLED=false until all checks are complete.
+4. Migration 20261010105617_stripe_billing_lifecycle.sql was applied on 10 October 2026. tests/billing-lifecycle.sql passes with synthetic database fixtures rolled back; it makes no Stripe calls.
+5. Register https://classicsgo.com/api/billing/webhook with API version 2026-09-30.endive. Subscribe to checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, customer.subscription.created, customer.subscription.updated, customer.subscription.deleted, customer.subscription.paused, customer.subscription.resumed, invoice.paid, invoice.payment_failed and invoice.payment_action_required. Copy that endpoint signing secret into server configuration.
+6. Configure the Stripe customer portal for payment methods, invoices and cancellation at the end of the paid period. Disable arbitrary product/plan switching in the portal until supported and verified. Configure business details and Terms URL https://classicsgo.com/terms because Checkout collects terms consent. Review Stripe receipt, retry and cancellation email settings.
+7. Verify the complete flow in a separately configured Stripe sandbox before enabling live billing: paid subscription grants access only after authenticated webhook; cancel-at-period-end keeps access through expiry; failed or terminal subscription removes access; replay/out-of-order webhook cannot grant incorrectly; portal only opens the authenticated user's customer. Current production configuration intentionally requires live keys and live events; do not use fake live payments as a substitute for a separately configured sandbox verification. Unit and SQL tests do not certify payment-provider configuration. Do not enable BILLING_ENABLED until the owner has completed and verified this setup.
+
+## Safety and lifecycle
+
+The Checkout success URL never grants membership. Webhooks verify raw-body HMAC signatures and freshness, retrieve canonical Stripe subscription state, and apply a service-only RPC with idempotency and stale-event protection. Ordinary clients cannot write billing tables or profile entitlement columns. Existing administrator and manually granted early access are preserved and never silently converted into paid subscriptions.
+
+Checkout reserves a per-customer lease across Stripe calls and uses a stable generation idempotency key independent of annual/monthly selection. A known unpaid previous checkout must expire before changing plan. Ambiguous network failures retain the generation to prevent a second subscription. A customer mapping blocks self-service account deletion, even when no subscription exists yet. Support must expire all open Checkouts, resolve/cancel billing and confirm no further charges can occur before manually completing a deletion. Never simply remove the mapping to bypass this guard. Customer binding and deletion share an advisory transaction lock.
+
+Subscription cancellation stops renewal; access ends at the paid period boundary. Refunds and disputes require Matthew's review in Stripe; no automatic refund API is implemented. Inspect and reconcile refunds against subscription/access state rather than assuming a refund cancels the subscription. Retain retired price IDs in STRIPE_ROADBOOK_LEGACY_PRICE_IDS while existing subscriptions use them. Disabling new checkout does not disable the billing portal or webhook lifecycle when server credentials remain configured.
+
+## Optional welcome email
+
+Sign-in works without welcome delivery. Supabase still needs RESEND_API_KEY and WELCOME_EMAIL_FROM with a Resend-verified custom-domain sender, for example ClassicsGo <welcome@classicsgo.com>. A paid Google Workspace mailbox is not required for sender-domain DNS verification. Replies use matthewcoxall@googlemail.com; Gmail/Googlemail must not be used as the Resend From address. No welcome email was sent during this work.

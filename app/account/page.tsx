@@ -44,7 +44,7 @@ export default async function AccountPage({
   const [{ data: profile }, going, saved] = await Promise.all([
     supabase
       .from("profiles")
-      .select("display_name,home_location,home_postcode,home_radius_miles,tier")
+      .select("display_name,home_location,home_postcode,home_radius_miles,tier,stripe_customer_id")
       .eq("id", viewer.id)
       .single(),
     getGoingEvents(viewer.id),
@@ -232,7 +232,7 @@ export default async function AccountPage({
       {tab === "security" ? (
         <div className="mt-7 max-w-3xl">
           <AccountSecurityControls
-            canDelete={!viewer.isAdmin && viewer.tier === "free"}
+            canDelete={!viewer.isAdmin && viewer.tier === "free" && !profile?.stripe_customer_id}
           />
         </div>
       ) : null}

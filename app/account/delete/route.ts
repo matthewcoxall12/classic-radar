@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   const { error } = await supabase.rpc("delete_own_account", { p_confirmation: confirmation });
   if (error) {
     const message = error.message.toLowerCase();
-    const status = /(?:recent|fresh) authentication/.test(message) ? 403 : /administrator|paid membership/.test(message) ? 409 : 500;
+    const status = /(?:recent|fresh) authentication/.test(message) ? 403 : /administrator|paid membership|linked billing/.test(message) ? 409 : 500;
     const publicMessage = status === 403
       ? "Sign out and back in before deleting your account."
       : status === 409
