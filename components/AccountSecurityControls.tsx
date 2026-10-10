@@ -31,6 +31,8 @@ export function AccountSecurityControls({ canDelete }: { canDelete: boolean }) {
       link.click();
       URL.revokeObjectURL(url);
       setMessage("Your account export has been downloaded.");
+    } catch {
+      setMessage("Your export could not connect. Check your connection and try again.");
     } finally {
       setPending(null);
     }
@@ -39,44 +41,54 @@ export function AccountSecurityControls({ canDelete }: { canDelete: boolean }) {
   async function revokeSessions() {
     setPending("sessions");
     setMessage("");
-    const { error } = await createClient().auth.signOut({ scope: "global" });
-    if (error) {
+    try {
+      const { error } = await createClient().auth.signOut({ scope: "global" });
+      if (error) {
+        setPending(null);
+        setMessage("Your sessions could not be revoked. Please try again.");
+        return;
+      }
+      // Reload after authentication cookie changes to clear the previous account context.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/?signed_out=all");
+    } catch {
       setPending(null);
-      setMessage("Your sessions could not be revoked. Please try again.");
-      return;
+      setMessage("Your sessions could not be revoked. Check your connection and try again.");
     }
-    // Reload after authentication cookie changes to clear the previous account context.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.assign("/?signed_out=all");
   }
 
   async function deleteAccount() {
     if (!canDelete || confirmation !== "DELETE") return;
     if (
       !window.confirm(
-        "Permanently delete your ClassicsGo account and all data linked to it? This cannot be undone.",
+        "Permanently delete your ClassicsGo login and private account data? Public event listings may remain. This cannot be undone.",
       )
     )
       return;
     setPending("delete");
     setMessage("");
-    const response = await fetch("/account/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ confirmation }),
-    });
-    const body = (await response.json().catch(() => ({}))) as {
-      error?: string;
-    };
-    if (!response.ok) {
+    try {
+      const response = await fetch("/account/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation }),
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!response.ok) {
+        setPending(null);
+        setMessage(body.error || "Your account could not be deleted.");
+        return;
+      }
+      await createClient().auth.signOut({ scope: "local" });
+      // Reload after authentication cookie changes to clear the previous account context.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/?account=deleted");
+    } catch {
       setPending(null);
-      setMessage(body.error || "Your account could not be deleted.");
-      return;
+      setMessage("The deletion result could not be confirmed. Refresh your account before trying again.");
     }
-    await createClient().auth.signOut({ scope: "local" });
-    // Reload after authentication cookie changes to clear the previous account context.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.assign("/?account=deleted");
   }
 
   return (
@@ -112,8 +124,8 @@ export function AccountSecurityControls({ canDelete }: { canDelete: boolean }) {
           Sign out everywhere
         </h2>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Revoke every ClassicsGo session for this account, including this
-          browser. You will need to sign in with Google again.
+          Sign out of this browser and end other ClassicsGo sessions as their
+          current sign-in expires. You will need to sign in with Google again.
         </p>
         <button
           type="button"
@@ -138,8 +150,8 @@ export function AccountSecurityControls({ canDelete }: { canDelete: boolean }) {
         {canDelete ? (
           <>
             <p className="mt-2 text-sm leading-6 text-muted">
-              This permanently deletes your login and cascades all account-owned
-              ClassicsGo data. It cannot be undone. Sign in again first if your
+              This permanently deletes your login and private account data.
+              Public event listings may remain for other visitors. It cannot be undone. Sign in again first if your
               session is more than 15 minutes old.
             </p>
             <label className="mt-4 grid max-w-sm gap-1 text-sm font-bold">
@@ -170,10 +182,10 @@ export function AccountSecurityControls({ canDelete }: { canDelete: boolean }) {
             Administrator and active paid-plan accounts require a manual
             ownership or billing check before deletion. Email{" "}
             <a
-              href="mailto:privacy@classicsgo.com"
+              href="mailto:matthewcoxall@googlemail.com"
               className="font-bold text-oxblood"
             >
-              privacy@classicsgo.com
+              matthewcoxall@googlemail.com
             </a>
             .
           </p>

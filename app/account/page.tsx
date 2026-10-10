@@ -48,7 +48,7 @@ export default async function AccountPage({
       .eq("id", viewer.id)
       .single(),
     getGoingEvents(viewer.id),
-    getSavedEvents(viewer.id),
+    viewer.canUseRoadbook ? getSavedEvents(viewer.id) : Promise.resolve([]),
   ]);
   const displayed = tab === "saved" ? saved : tab === "going" ? going : [];
   const eventState = await getViewerEventState(
@@ -74,7 +74,7 @@ export default async function AccountPage({
           </h1>
           <p className="mt-2 text-sm text-muted">
             {viewer.email} ·{" "}
-            {viewer.tier === "roadbook" ? "Roadbook member" : "Free member"}
+            {viewer.canUseRoadbook ? "Roadbook member" : "Free member"}
           </p>
         </div>
         <SignOutButton />
@@ -119,7 +119,7 @@ export default async function AccountPage({
           active={tab === "saved"}
           icon={<Bookmark className="h-4 w-4" />}
         >
-          Saved ({saved.length})
+          {viewer.canUseRoadbook ? `Wishlist (${saved.length})` : "Wishlist · Roadbook"}
         </Tab>
         <Tab
           href="/account?tab=profile"
@@ -128,6 +128,7 @@ export default async function AccountPage({
         >
           Preferences
         </Tab>
+        <Tab href="/submit-event" active={false} icon={<MapPin className="h-4 w-4" />}>My listings</Tab>
         <Tab
           href="/account?tab=security"
           active={tab === "security"}
@@ -181,20 +182,20 @@ export default async function AccountPage({
           <div className="rounded-xl bg-racing p-6 text-paper shadow-soft">
             <Crown className="h-8 w-8 text-brass" />
             <h2 className="mt-4 font-serif text-3xl font-semibold">
-              {viewer.tier === "roadbook"
+              {viewer.canUseRoadbook
                 ? "Roadbook active"
-                : "Roadbook is coming soon"}
+                : "Explore Roadbook early access"}
             </h2>
             <p className="mt-3 text-sm leading-6 text-paper/70">
-              {viewer.tier === "roadbook"
-                ? "Your saved events and attendance are ready. Route planning, multiple areas and alerts are still coming soon."
-                : "Your free wishlist is ready now. Roadbook will add multiple saved areas, garage, alerts, reminders and trip plans."}
+              {viewer.canUseRoadbook
+                ? "Your private wishlist, weekend plans, personal notes, shareable roadbooks and calendar downloads are ready."
+                : "Roadbook adds a private wishlist, organised weekend plans, personal notes, shareable plans and calendar downloads. Request early access before paid membership launches."}
             </p>
             <Link
-              href="/membership"
+              href={viewer.canUseRoadbook ? "/my-events" : "/membership"}
               className="mt-5 inline-flex font-black text-brass"
             >
-              See membership details →
+              {viewer.canUseRoadbook ? "Open my Roadbooks →" : "Explore Roadbook →"}
             </Link>
           </div>
         </div>
@@ -203,15 +204,15 @@ export default async function AccountPage({
       {tab === "going" ? (
         <EventList
           events={displayed}
-          canSave
+          canSave={viewer.canUseRoadbook}
           state={eventState}
           empty="You have not marked any events as going yet."
         />
       ) : null}
-      {tab === "saved" ? (
+      {tab === "saved" && !viewer.canUseRoadbook ? (<div className="mt-7 rounded-xl bg-cream p-7"><h2 className="font-serif text-3xl">Your private wishlist, with Roadbook</h2><p className="my-4 text-muted">Save the events you are considering, keep them separate from your going list and turn them into weekend plans.</p><Link href="/membership" className="font-bold text-racing underline">Explore Roadbook and request early access →</Link></div>) : tab === "saved" ? (
         <EventList
           events={displayed}
-          canSave
+          canSave={viewer.canUseRoadbook}
           state={eventState}
           empty="Your wishlist is empty."
         />

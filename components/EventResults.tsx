@@ -43,6 +43,7 @@ export function EventResults({
         children
       ) : (
         <div className="mt-5">
+          <p className="mb-3 text-sm text-muted">The map shows events with a mapped venue on this results page. Use the page links to explore more results.</p>
           <EventMap
             key={events.map((event) => event.id).join(",")}
             events={events}

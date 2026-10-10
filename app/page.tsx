@@ -46,10 +46,6 @@ export default async function HomePage() {
             priority
             sizes="(max-width: 800px) 90vw, (max-width: 1280px) 45vw, 560px"
           />
-          <figcaption>
-            A Sunday meet, imagined ·{" "}
-            <Link href="/photography">AI-generated illustration</Link>
-          </figcaption>
         </figure>
       </section>
       <section className="home-search page-shell">
@@ -72,7 +68,7 @@ export default async function HomePage() {
               key={event.id}
               event={event}
               signedIn={Boolean(viewer)}
-              canSave={Boolean(viewer)}
+              canSave={Boolean(viewer?.canUseRoadbook)}
               isSaved={state.saved.has(event.id)}
               isGoing={state.going.has(event.id)}
             />
@@ -80,7 +76,7 @@ export default async function HomePage() {
           {!events.length && (
             <div className="empty-state">
               <h3>The next chapter is on its way.</h3>
-              <p>Search the calendar or share an event for review.</p>
+              <p>Search the calendar or add an event to share with the community.</p>
               <Link href="/submit-event">Submit an event →</Link>
             </div>
           )}
@@ -115,10 +111,6 @@ export default async function HomePage() {
               fill
               sizes="(max-width: 800px) 100vw, 50vw"
             />
-            <figcaption>
-              Illustrative photograph ·{" "}
-              <Link href="/photography">Calreyn88 / CC BY-SA 4.0</Link>
-            </figcaption>
           </figure>
           <div className="editorial-copy">
             <p className="eyebrow">Small meets. Lasting memories.</p>
@@ -140,8 +132,9 @@ export default async function HomePage() {
             <p className="eyebrow">Your own motoring calendar</p>
             <h2>Keep the good days in sight.</h2>
             <p>
-              A free ClassicsGo account lets you save events, mark the days
-              you’re going and share a listing with our reviewers.
+              Mark the days you’re going and publish your own events with a free
+              account. Roadbook members can keep a private wishlist and turn
+              discoveries into plans for the next day out.
             </p>
             <Link href="/sign-in" className="button-light">
               Create your free account <ArrowUpRight size={18} />
@@ -150,7 +143,7 @@ export default async function HomePage() {
           <div className="roadbook-features">
             <p>
               <Bookmark />
-              Save your discoveries
+              Keep a private Roadbook wishlist
             </p>
             <p>
               <CalendarDays />
@@ -161,7 +154,7 @@ export default async function HomePage() {
               Explore a little further
             </p>
             <span>
-              Roadbook route planning and tailored alerts are coming later.{" "}
+              Discover the tools included with Roadbook.{" "}
               <Link href="/membership">See what’s available →</Link>
             </span>
           </div>

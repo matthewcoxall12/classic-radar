@@ -7,7 +7,7 @@ export function AuthForm({ returnTo = "/account" }: { returnTo?: string }) {
     <div className="rounded-xl border border-ink/10 bg-paper p-5 shadow-soft sm:p-6">
       <h2 className="font-serif text-2xl font-semibold text-ink">Sign in to ClassicsGo</h2>
       <p className="mt-2 text-sm leading-6 text-muted">
-        Use your Google account to save events, mark attendance, submit listings and manage your account.
+        Use your Google account to mark attendance, publish events and manage your account. Roadbook members can also keep a private wishlist.
       </p>
       <div className="mt-5"><GoogleSignIn returnTo={returnTo} /></div>
       <div className="mt-4 flex items-start gap-2 border-t border-ink/10 pt-4 text-xs leading-5 text-muted">

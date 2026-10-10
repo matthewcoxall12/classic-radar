@@ -34,13 +34,13 @@ export default async function ClubsPage() {
               href="/submit-event"
               className="focus-ring inline-flex min-h-11 items-center rounded-md bg-racing px-5 text-sm font-black text-paper"
             >
-              Submit an event
+              Add an event
             </Link>
             <a
-              href="mailto:hello@classicsgo.com?subject=Club%20or%20organiser%20partnership"
+              href="mailto:matthewcoxall@googlemail.com?subject=Club%20or%20organiser%20partnership"
               className="focus-ring inline-flex min-h-11 items-center rounded-md border border-ink/15 bg-paper px-5 text-sm font-black text-ink"
             >
-              Email hello@classicsgo.com
+              Email matthewcoxall@googlemail.com
             </a>
           </div>
         </div>
@@ -51,7 +51,7 @@ export default async function ClubsPage() {
           <p className="eyebrow">Club directory · coming soon</p>
           <h2 className="font-serif text-4xl mt-3">Find your people.</h2>
           <p className="text-sm text-muted mt-3 leading-7">
-            Club profiles and a searchable directory are being prepared. In the
+            Club profiles and a searchable club directory are planned. In the
             meantime, explore published club meets or send us your official
             calendar.
           </p>
@@ -70,16 +70,15 @@ export default async function ClubsPage() {
           )}
         </section>
         <div className="mt-5 grid gap-4 sm:grid-cols-3 lg:col-span-2">
-          <Point icon={<CalendarPlus />} title="Free submissions">
-            Tell us about individual public events at no listing charge.
+          <Point icon={<CalendarPlus />} title="Free event listings">
+            Publish public events free, with details, links and a photograph. Edit or cancel your own listings whenever needed.
           </Point>
           <Point icon={<Radar />} title="Calendar coverage">
             Provide an official public event or calendar page for regular
             discovery.
           </Point>
           <Point icon={<BadgeCheck />} title="Source accuracy">
-            Official club and organiser information carries the strongest
-            verification signal.
+            Link to your official event page so visitors can confirm the latest details directly.
           </Point>
         </div>
         <div className="rounded-xl border border-brass/40 bg-brass/10 p-6 lg:col-span-2">
@@ -93,7 +92,7 @@ export default async function ClubsPage() {
                 We expect to offer clearly labelled opportunities for specialist
                 garages, detailers, insurers, hospitality businesses and other
                 firms that genuinely serve the classic motoring community.
-                Contact hello@classicsgo.com to register interest; no
+                Contact matthewcoxall@googlemail.com to register interest; no
                 advertising product is on sale yet.
               </p>
             </div>

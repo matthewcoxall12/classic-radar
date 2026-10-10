@@ -36,3 +36,11 @@ See [docs/event-discovery.md](docs/event-discovery.md) for extraction, schedulin
 ## Public configuration
 
 The website needs `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. Set `NEXT_PUBLIC_SITE_URL=https://classicsgo.com` for canonical production metadata. No service-role, cron, agent or search-provider secret belongs in Vercel.
+
+## Account and operational email
+
+All public contact and operational replies go to `matthewcoxall@googlemail.com`. Google Workspace is not required for Google sign-in or the site. Keep infrastructure access with the verified personal Google account and grant administrator access explicitly by user UUID; signup never grants administrator rights from an email address.
+
+Welcome delivery is optional and cannot prevent sign-in. It is currently disabled because `RESEND_API_KEY` and `WELCOME_EMAIL_FROM` are not configured in Supabase. Enable it only after verifying a sender domain with Resend and configuring those Edge Function secrets. Use a custom-domain sender such as `ClassicsGo <welcome@classicsgo.com>` after domain verification; never use Gmail/Googlemail as the Resend From address. Replies go to Matthew's personal address through `reply_to`. The function rejects consumer-mailbox and Resend test senders, requires an authenticated verified recipient, and claims each user's one-off delivery in its private ledger. No newsletter enrollment is implied.
+
+`npm run test:discovery` also runs authentication redirect, event publishing validation, entitlement, Roadbook calendar and welcome-content regressions. Rollback SQL security checks are in `tests/account-session-security.sql`, `tests/account-admin-default.sql` and `tests/self-service-events.sql`; run against the intended Supabase project after its migrations.

@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       ? "Sign out and back in before deleting your account."
       : status === 409
         ? "This account needs manual support before it can be deleted."
-        : "Your account could not be deleted. Please contact privacy@classicsgo.com.";
+        : "Your account could not be deleted. Please contact matthewcoxall@googlemail.com.";
     return Response.json({ ok: false, error: publicMessage }, { status, headers: { "Cache-Control": "no-store" } });
   }
 

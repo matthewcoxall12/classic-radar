@@ -37,6 +37,6 @@ export function eventPhotograph(type: string, seed = "") {
 }
 
 export const weekendIllustration = {
-  src: "/images/editorial/weekend-out.webp",
-  alt: "AI-generated illustration of a well-used Austin A35 van and people chatting at an informal village-hall classic car meet",
+  src: "/images/editorial/weekend-meet-v2.webp",
+  alt: "An imagined village-hall meet with a weathered Austin A35 van, Mini, Morris Minor and MG Midget, and owners chatting over tea",
 } as const;

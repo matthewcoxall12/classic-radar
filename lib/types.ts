@@ -24,6 +24,8 @@ export type ClassicEvent = {
   organiser_name: string | null;
   organiser_url: string | null;
   image_url: string | null;
+  created_by?: string | null;
+  timezone?: string;
   status: EventStatus;
   confidence_score: number;
   is_verified: boolean;

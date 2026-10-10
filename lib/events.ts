@@ -1,4 +1,4 @@
-import { dateRange, sortLocalEvents } from "@/lib/event-search";
+import { dateRange, eventSearchWindow } from "@/lib/event-search";
 import { geocodeLocation, hasValidCoordinatePair } from "@/lib/geocoding";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -39,97 +39,40 @@ export async function getEvents(
 ): Promise<ClassicEvent[]> {
   const range = dateRange(params.date);
   const supabase = await createClient();
-  const origin = hasValidCoordinatePair(params.lat, params.lng)
+  const broadSearch = ["uk", "europe"].includes(params.radius || "");
+  const origin = broadSearch ? null : hasValidCoordinatePair(params.lat, params.lng)
     ? {
         latitude: Number(params.lat),
         longitude: Number(params.lng),
         label: "Current location",
       }
     : await geocodeLocation(params.location);
-  const isLocalSearch = Boolean(
+  const isLocalSearch = !broadSearch && Boolean(
     params.location?.trim() || hasValidCoordinatePair(params.lat, params.lng),
   );
   if (isLocalSearch && !origin) return [];
 
-  let events: ClassicEvent[] = [];
+  const local = Boolean(origin && !broadSearch);
+  const window = eventSearchWindow(params.page, limit);
   const radius = Number(params.radius || 50);
-  if (
-    origin &&
-    Number.isFinite(radius) &&
-    !["uk", "europe"].includes(params.radius || "")
-  ) {
-    const { data, error } = await supabase.rpc("events_nearby", {
-      p_latitude: origin.latitude,
-      p_longitude: origin.longitude,
-      p_radius_miles: Math.min(250, Math.max(1, radius)),
-      p_limit: Math.min(200, Math.max(1, limit)),
-    });
-    if (error || !data) {
-      console.error("ClassicsGo nearby event query failed", error?.message);
-      return [];
-    }
-    events = data as ClassicEvent[];
-    events = events.filter(
-      (event) =>
-        event.start_date >= range.start &&
-        (!range.end || event.start_date <= range.end),
-    );
-    if (params.types?.length)
-      events = events.filter((event) =>
-        params.types!.includes(event.event_type),
-      );
-  } else {
-    const page = Math.max(1, Number.parseInt(params.page || "1", 10) || 1);
-    const resultsPerPage = params.page ? Math.max(1, limit - 1) : limit;
-    const offset = (page - 1) * resultsPerPage;
-    let query = supabase
-      .from("events")
-      .select("*")
-      .eq("status", "published")
-      .gte("start_date", range.start)
-      .order("start_date", { ascending: true })
-      .range(offset, offset + limit - 1);
-    if (range.end) query = query.lte("start_date", range.end);
-    if (params.types?.length) query = query.in("event_type", params.types);
-    if (params.radius === "uk") query = query.eq("country_code", "GB");
-    const databaseText = params.q
-      ?.trim()
-      .replace(/[^\p{L}\p{N}\s&'-]/gu, " ")
-      .replace(/\s+/g, " ")
-      .slice(0, 120);
-    if (databaseText) {
-      query = query.or(
-        `event_type.ilike.%${databaseText}%,title.ilike.%${databaseText}%,description.ilike.%${databaseText}%,venue_name.ilike.%${databaseText}%,town.ilike.%${databaseText}%,county.ilike.%${databaseText}%,organiser_name.ilike.%${databaseText}%`,
-      );
-    }
-    const { data, error } = await query;
-    if (error || !data) {
-      console.error("ClassicsGo event query failed", error?.message);
-      return [];
-    }
-    events = data as ClassicEvent[];
+  const { data, error } = await supabase.rpc("search_public_events", {
+    p_start_date: range.start,
+    p_end_date: range.end,
+    p_query: params.q?.trim().slice(0, 120) || null,
+    p_types: params.types?.length ? params.types : null,
+    p_country: params.radius === "uk" ? "GB" : null,
+    p_latitude: local ? origin!.latitude : null,
+    p_longitude: local ? origin!.longitude : null,
+    p_radius_miles: Number.isFinite(radius) ? Math.min(250, Math.max(1, radius)) : 50,
+    p_sort: params.sort === "distance" ? "distance" : "date",
+    p_offset: window.offset,
+    p_limit: window.limit,
+  });
+  if (error || !data) {
+    console.error("ClassicsGo event query failed", error?.message);
+    return [];
   }
-
-  const text = params.q?.trim().toLocaleLowerCase("en-GB");
-  if (text) {
-    events = events.filter((event) =>
-      [
-        event.title,
-        event.description,
-        event.venue_name,
-        event.town,
-        event.county,
-        event.event_type,
-        event.organiser_name,
-      ]
-        .filter(Boolean)
-        .some((value) => value!.toLocaleLowerCase("en-GB").includes(text)),
-    );
-  }
-  if (origin && !["uk", "europe"].includes(params.radius || "")) {
-    events = sortLocalEvents(events, params.sort);
-  }
-  return events;
+  return data as ClassicEvent[];
 }
 
 export async function getUpcomingEvents(limit = 3) {
@@ -144,7 +87,7 @@ export async function getEventBySlug(
     .from("events")
     .select("*")
     .eq("slug", slug)
-    .eq("status", "published")
+    .in("status", ["published", "cancelled"])
     .maybeSingle();
   if (error)
     console.error("ClassicsGo event detail query failed", error.message);

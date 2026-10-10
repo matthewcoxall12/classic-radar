@@ -29,18 +29,14 @@ export default async function EventsPage({
       ? [params.types]
       : [];
   const radius = typeof params.radius === "string" ? params.radius : "50";
-  const page = Math.max(
+  const page = Math.min(10000, Math.max(
     1,
     Number.parseInt(typeof params.page === "string" ? params.page : "1", 10) ||
       1,
-  );
+  ));
   const latitude = typeof params.lat === "string" ? params.lat : undefined;
   const longitude = typeof params.lng === "string" ? params.lng : undefined;
-  const localSearch = Boolean(
-    (typeof params.location === "string" && params.location.trim()) ||
-    hasValidCoordinatePair(latitude, longitude),
-  );
-  const pageSize = localSearch ? 200 : 31;
+  const pageSize = 31;
   const hasLocation = Boolean(
     (typeof params.location === "string" && params.location.trim()) ||
     hasValidCoordinatePair(latitude, longitude) ||
@@ -67,7 +63,7 @@ export default async function EventsPage({
         )
       : Promise.resolve([]),
   ]);
-  const hasNextPage = !localSearch && events.length > 30;
+  const hasNextPage = events.length > 30;
   const displayedEvents = hasNextPage ? events.slice(0, 30) : events;
   const state = await getViewerEventState(
     displayedEvents.map((event) => event.id),
@@ -91,7 +87,7 @@ export default async function EventsPage({
       <EventFilters searchParams={params} />
       {hasLocation ? (
         <p className="mt-6 text-sm font-bold text-muted">
-          {localSearch ? displayedEvents.length : `Page ${page}`} · upcoming
+          {`Page ${page}`} · upcoming
           events
         </p>
       ) : null}
@@ -105,7 +101,7 @@ export default async function EventsPage({
                 key={event.id}
                 event={event}
                 signedIn={Boolean(viewer)}
-                canSave={Boolean(viewer)}
+                canSave={Boolean(viewer?.canUseRoadbook)}
                 isSaved={state.saved.has(event.id)}
                 isGoing={state.going.has(event.id)}
               />
@@ -115,7 +111,7 @@ export default async function EventsPage({
           )}
         </div>
       </EventResults>
-      {!localSearch && (page > 1 || hasNextPage) ? (
+      {(page > 1 || hasNextPage) ? (
         <nav
           aria-label="Event result pages"
           className="mt-8 flex items-center justify-between gap-4"

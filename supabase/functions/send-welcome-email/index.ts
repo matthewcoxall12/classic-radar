@@ -1,3 +1,5 @@
+import { isCustomDomainSender, welcomeContent, welcomeReplyTo } from "./content.ts";
+
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")?.replace(/\/$/, "");
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const WELCOME_EMAIL_FROM = Deno.env.get("WELCOME_EMAIL_FROM");
@@ -125,22 +127,6 @@ async function markSent(userId: string, messageId: string | null): Promise<void>
   if (!result.ok) throw new Error(`Could not mark welcome delivery sent (${result.status})`);
 }
 
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  })[character] ?? character);
-}
-
-function firstName(user: Record<string, unknown>): string {
-  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
-  const fullName = String(metadata.full_name ?? metadata.name ?? "").trim();
-  return escapeHtml((fullName.split(/\s+/)[0] || "there").slice(0, 80));
-}
-
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(request) });
   if (request.method !== "POST") return response(request, { ok: false, error: "Method not allowed" }, 405);
@@ -161,7 +147,7 @@ Deno.serve(async (request: Request) => {
   if (!/^[0-9a-f-]{36}$/i.test(userId) || !email || !user.email_confirmed_at) {
     return response(request, { ok: false, error: "A verified email address is required" }, 400);
   }
-  if (!RESEND_API_KEY || !WELCOME_EMAIL_FROM) {
+  if (!RESEND_API_KEY || !isCustomDomainSender(WELCOME_EMAIL_FROM)) {
     return response(request, { ok: false, error: "Welcome email is not configured" }, 503);
   }
 
@@ -170,7 +156,8 @@ Deno.serve(async (request: Request) => {
     claimed = await claim(userId);
     if (!claimed) return response(request, { ok: true, sent: false, reason: "already_processed" });
 
-    const name = firstName(user);
+    const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const content = welcomeContent(String(metadata.full_name ?? metadata.name ?? ""));
     const mail = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -181,9 +168,8 @@ Deno.serve(async (request: Request) => {
       body: JSON.stringify({
         from: WELCOME_EMAIL_FROM,
         to: [email],
-        subject: "Welcome to ClassicsGo",
-        text: `Hi ${name === "there" ? "there" : name},\n\nWelcome to ClassicsGo — your place to discover classic car shows, meets and events near you.\n\nStart exploring: https://classicsgo.com\n\nThe ClassicsGo team`,
-        html: `<!doctype html><html><body style="margin:0;background:#f5f2ea;font-family:Arial,sans-serif;color:#17231b"><div style="max-width:600px;margin:0 auto;padding:40px 20px"><div style="background:#fff;border:1px solid #ded9cc;border-radius:16px;padding:36px"><p style="margin:0 0 8px;color:#2f6b4f;font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">ClassicsGo</p><h1 style="margin:0 0 18px;font-size:30px;line-height:1.2">Welcome, ${name}.</h1><p style="font-size:17px;line-height:1.65;margin:0 0 24px">Discover classic car shows, meets and events near you, all in one place.</p><a href="https://classicsgo.com" style="display:inline-block;background:#2f6b4f;color:#fff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:10px">Explore events</a><p style="font-size:13px;line-height:1.5;color:#657067;margin:28px 0 0">You received this once because you created a ClassicsGo account.</p></div></div></body></html>`
+        reply_to: welcomeReplyTo,
+        ...content
       }),
       signal: AbortSignal.timeout(15_000)
     });

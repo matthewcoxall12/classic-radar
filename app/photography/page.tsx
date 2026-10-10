@@ -16,15 +16,14 @@ export default function PhotographyPage() {
       <p>
         Editorial photographs are illustrative. Event listings use reviewed
         photographs of that event where available, or a date panel when no
-        reusable image has been supplied. Previous editions are labelled with
-        their year. Historic photography is captioned with its actual context.
+        reusable image has been supplied. The event photograph credits below identify their original context and year; a photograph of a previous edition does not show the upcoming event. Community event photographs are supplied by the member publishing the listing, who must confirm permission to use them.
         Assets have been resized, compressed and may be cropped in the layout.
       </p>
       <section>
         <h2>A relaxed Sunday meet</h2>
         <p>
           The homepage opening image is an AI-generated illustration of an
-          Austin A35 van and an informal owners’ gathering. It depicts an
+          Austin A35 van, Mini, Morris Minor and MG Midget at an informal owners’ gathering. It depicts an
           imagined scene, not a real event or a photograph of its attendees.
         </p>
         <p>
