@@ -13,6 +13,7 @@ import { EventTypeBadge } from "@/components/EventTypeBadge";
 import { getViewer } from "@/lib/auth";
 import { getEventBySlug, getViewerEventState, getEvents } from "@/lib/events";
 import { absoluteUrl } from "@/lib/site";
+import { eventPageStructuredData, serializeStructuredData } from "@/lib/structured-data";
 import { formatEventDate, locationLabel, safeExternalUrl } from "@/lib/utils";
 
 type PageProps = { params: Promise<{ slug: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> };
@@ -55,53 +56,15 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
   ]);
   if (!event) notFound();
   const cancelled = event.status === "cancelled";
-  const image = eventImageUrl(event);
   const officialUrl =
     (cancelled ? null : safeExternalUrl(event.booking_url)) || safeExternalUrl(event.organiser_url);
-  const organiserUrl = safeExternalUrl(event.organiser_url);
   const reportUrl = `mailto:matthewcoxall@googlemail.com?subject=${encodeURIComponent(`Report event listing: ${event.title}`)}&body=${encodeURIComponent(`Event: ${event.title}\nListing: ${absoluteUrl(`/events/${event.slug}`)}\nEvent ID: ${event.id}\n\nPlease tell us what is incorrect or inappropriate, including any useful public source links:\n`)}`;
   const reviewPage = parseReviewPage((await searchParams)?.review_page);
   const [state, reviews] = await Promise.all([
     getViewerEventState([event.id], viewer?.id),
     canReviewEvent(event) ? getEventReviews(event.id, viewer?.id, reviewPage) : Promise.resolve(null),
   ]);
-  const eventData = {
-    "@context": "https://schema.org",
-    "@type": "Event",
-    name: event.title,
-    description: event.description,
-    startDate: `${event.start_date}${event.start_time ? `T${event.start_time}` : ""}`,
-    endDate: event.end_date
-      ? `${event.end_date}${event.end_time ? `T${event.end_time}` : ""}`
-      : undefined,
-    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-    eventStatus: cancelled ? "https://schema.org/EventCancelled" : "https://schema.org/EventScheduled",
-    aggregateRating: reviews && !reviews.unavailable && reviews.count > 0 && reviews.average != null ? {
-      "@type": "AggregateRating", ratingValue: reviews.average, reviewCount: reviews.count, bestRating: 5, worstRating: 1,
-    } : undefined,
-    location: {
-      "@type": "Place",
-      name: event.venue_name,
-      address: [
-        event.address,
-        event.town,
-        event.county,
-        event.postcode,
-        event.country_code,
-      ]
-        .filter(Boolean)
-        .join(", "),
-    },
-    image: image ? absoluteUrl(image) : undefined,
-    url: absoluteUrl(`/events/${event.slug}`),
-    organizer: event.organiser_name
-      ? {
-          "@type": "Organization",
-          name: event.organiser_name,
-          url: organiserUrl || undefined,
-        }
-      : undefined,
-  };
+  const eventData = eventPageStructuredData(event, reviews);
 
   const address = [
     event.venue_name,
@@ -132,12 +95,12 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(eventData).replaceAll("<", "\\u003c"),
+          __html: serializeStructuredData(eventData),
         }}
       />
       <nav aria-label="Breadcrumb" className="breadcrumbs">
         <Link href="/">Home</Link> /{" "}
-        <Link href="/events?radius=uk">Events</Link> / {event.event_type}
+        <Link href="/events">Events</Link> / <span aria-current="page">{event.title}</span>
       </nav>
       {cancelled ? <div role="status" className="mb-6 rounded-lg border border-oxblood/30 bg-oxblood/10 p-5 text-oxblood"><h2 className="font-serif text-3xl font-semibold">This event has been cancelled</h2><p className="mt-2 leading-7">Please do not travel to this event. Contact the organiser for updates or booking questions. You can find other upcoming events below.</p></div> : null}
       <div className="detail-hero">

@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "discover": "node scripts/discover-events.mjs",
-    "test:discovery": "node --test lib/geocoding.test.ts lib/supabase/config.test.ts tests/discovery-worker.test.mjs lib/event-search.test.ts lib/event-photography.test.ts supabase/functions/ingest-events/merge.test.ts lib/supabase/return-path.test.ts lib/event-submission.test.ts lib/entitlements.test.ts lib/roadbook-calendar.test.ts supabase/functions/send-welcome-email/content.test.ts supabase/functions/send-welcome-email/delivery.test.ts lib/event-reviews-validation.test.ts lib/billing.test.ts lib/billing-environment.test.ts"
+    "test:discovery": "node --test lib/geocoding.test.ts lib/supabase/config.test.ts tests/discovery-worker.test.mjs lib/event-search.test.ts lib/event-photography.test.ts supabase/functions/ingest-events/merge.test.ts lib/supabase/return-path.test.ts lib/event-submission.test.ts lib/entitlements.test.ts lib/roadbook-calendar.test.ts supabase/functions/send-welcome-email/content.test.ts supabase/functions/send-welcome-email/delivery.test.ts lib/event-reviews-validation.test.ts lib/billing.test.ts lib/billing-environment.test.ts lib/structured-data.test.ts lib/sitemap-events.test.ts"
   },
   "dependencies": {
     "@fontsource/barlow-condensed": "5.3.0",

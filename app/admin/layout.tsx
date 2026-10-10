@@ -1,6 +1,9 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { AuthForm } from "@/components/AuthForm";
 import { getViewer } from "@/lib/auth";
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 const adminNav = [
   { href: "/admin", label: "Overview" },
