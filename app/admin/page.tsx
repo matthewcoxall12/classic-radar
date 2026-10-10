@@ -12,7 +12,7 @@ export default async function AdminPage() {
       <Metric icon={<Bot className="h-5 w-5" />} label="Agent runs" value={runs.length} href="/admin/agent-runs" />
       <div className="rounded-lg border border-ink/10 bg-paper p-5 shadow-soft md:col-span-3">
         <h2 className="text-xl font-black">Automated discovery</h2>
-        <p className="mt-2 text-sm text-muted">The secured GitHub workflow discovers UK and European events daily at 03:17 UTC. Recent runs and review items appear above.</p>
+        <p className="mt-2 text-sm text-muted">The secured GitHub workflow discovers UK events daily at 03:17 UTC. Recent runs and review items appear above.</p>
       </div>
     </div>
   );

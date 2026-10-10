@@ -3,7 +3,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { supabaseUrl } from "@/lib/supabase/config";
 import { STRIPE_API_VERSION, type StripeRecord, validateRoadbookPrice } from "@/lib/billing";
 
-import { resolveBillingEnvironment } from "@/lib/billing-environment";
+import { resolveBillingEnvironment, stripeKeyMatchesMode } from "@/lib/billing-environment";
 export function billingConfig() {
   const environment = resolveBillingEnvironment(process.env);
   const secret = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
@@ -11,7 +11,7 @@ export function billingConfig() {
   const databaseSecret = process.env.SUPABASE_SECRET_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
   const annualPrice = process.env.STRIPE_ROADBOOK_ANNUAL_PRICE_ID?.trim() ?? "";
   const monthlyPrice = process.env.STRIPE_ROADBOOK_MONTHLY_PRICE_ID?.trim() ?? "";
-  const serverReady = environment.valid && secret.startsWith(environment.live ? "sk_live_" : "sk_test_") && !!databaseSecret;
+  const serverReady = environment.valid && stripeKeyMatchesMode(secret, environment.live) && !!databaseSecret;
   return { secret, webhookSecret, databaseSecret, annualPrice, monthlyPrice, ...environment, serverReady,
     checkoutReady: process.env.BILLING_ENABLED === "true" && serverReady && webhookSecret.startsWith("whsec_") && annualPrice !== monthlyPrice && [annualPrice, monthlyPrice].every(price => /^price_[A-Za-z0-9]+$/.test(price)),
     allowedPrices: [annualPrice, monthlyPrice, ...(process.env.STRIPE_ROADBOOK_LEGACY_PRICE_IDS ?? "").split(",")].map(value => value.trim()).filter(Boolean) };

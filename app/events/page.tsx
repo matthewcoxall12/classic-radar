@@ -13,7 +13,7 @@ type Params = Promise<{ [key: string]: string | string[] | undefined }>;
 export const metadata: Metadata = {
   title: "Classic car events",
   description:
-    "Search classic car shows, meets, autojumbles, rallies, club events and museum days across the UK and Europe.",
+    "Search classic car shows, meets, autojumbles, rallies, club events and museum days across the UK.",
   alternates: { canonical: "/events" },
 };
 
@@ -28,7 +28,7 @@ export default async function EventsPage({
     : params.types
       ? [params.types]
       : [];
-  const radius = typeof params.radius === "string" ? params.radius : "50";
+  const radius = params.radius === "europe" ? "uk" : typeof params.radius === "string" ? params.radius : "50";
   const page = Math.min(10000, Math.max(
     1,
     Number.parseInt(typeof params.page === "string" ? params.page : "1", 10) ||
@@ -40,8 +40,7 @@ export default async function EventsPage({
   const hasLocation = Boolean(
     (typeof params.location === "string" && params.location.trim()) ||
     hasValidCoordinatePair(latitude, longitude) ||
-    radius === "uk" ||
-    radius === "europe",
+    radius === "uk",
   );
   const [viewer, events] = await Promise.all([
     getViewer(),
@@ -80,7 +79,7 @@ export default async function EventsPage({
           Find classic car events
         </h1>
         <p className="mt-3 leading-7 text-muted">
-          Search near home or browse across the UK and Europe. Listings link to
+          Search near home or browse across the UK. Listings link to
           the official organiser wherever possible.
         </p>
       </div>

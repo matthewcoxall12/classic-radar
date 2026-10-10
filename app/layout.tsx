@@ -122,7 +122,7 @@ export default async function RootLayout({
               </div>
               <p className="mt-3 max-w-md text-sm leading-6 text-paper/65">
                 One place to discover classic car shows, local meets,
-                autojumbles, road runs and club events across the UK and Europe.
+                autojumbles, road runs and club events across the UK.
               </p>
               <p className="mt-3 text-xs text-paper/50">
                 Always confirm details with the organiser before travelling.
@@ -131,7 +131,6 @@ export default async function RootLayout({
             <div className="grid content-start gap-2 text-sm text-paper/70">
               <strong className="mb-1 text-paper">Explore</strong>
               <Link href="/events?radius=uk">UK events</Link>
-              <Link href="/events?radius=europe">European events</Link>
               <Link href="/membership">Membership</Link>
               <Link href="/submit-event/new">Add an event</Link>
             </div>
