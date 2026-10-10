@@ -37,3 +37,25 @@ export function mergeExistingEvent(incoming: EventRow, existing: EventRow): Even
 export function uniqueSourceCount(existingUrls: string[], incomingUrls: string[]): number {
   return new Set([...existingUrls, ...incomingUrls].filter(Boolean)).size;
 }
+
+type BatchCandidate = {
+  event: EventRow & { id: string; dedupe_key: string };
+  sources: EventRow[];
+};
+
+// Postgres cannot update the same conflict key twice in one upsert. Consolidate
+// discoveries before writing events, sources and their review-queue entries.
+export function consolidateCandidates<T extends BatchCandidate>(candidates: T[]): T[] {
+  const byKey = new Map<string, T>();
+  for (const candidate of candidates) {
+    const previous = byKey.get(candidate.event.dedupe_key);
+    const combined = previous ? {
+      ...previous,
+      event: { ...mergeExistingEvent(candidate.event, previous.event), id: previous.event.id },
+      sources: [...previous.sources, ...candidate.sources]
+    } as T : { ...candidate, sources: [...candidate.sources] };
+    combined.sources = [...new Map(combined.sources.map((source) => [String(source.canonical_url), source])).values()];
+    byKey.set(candidate.event.dedupe_key, combined);
+  }
+  return [...byKey.values()];
+}

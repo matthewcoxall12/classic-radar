@@ -55,7 +55,7 @@ jobs:
         run: |
           node --version
           node --check scripts/discover-events.mjs
-          node --test tests/discovery-worker.test.mjs
+          node --test tests/discovery-worker.test.mjs supabase/functions/ingest-events/merge.test.ts
 
       - name: Scout registered sources into private review
         run: node scripts/discover-events.mjs

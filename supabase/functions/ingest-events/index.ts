@@ -1,5 +1,5 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "npm:jose@6.2.3";
-import { mergeExistingEvent, uniqueSourceCount } from "./merge.ts";
+import { consolidateCandidates, mergeExistingEvent, uniqueSourceCount } from "./merge.ts";
 import { agentRunStatus, isCalendarDate, normaliseClockTime, normaliseEventType } from "./validation.ts";
 
 const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
@@ -356,7 +356,7 @@ async function batch(payload: RecordLike) {
     limit: "10000"
   });
   const existing = await rest<ExistingEvent[]>("events", { query: existingQuery });
-  const candidates = await sanitiseCandidates(candidatesInput, existing ?? []);
+  const candidates = consolidateCandidates(await sanitiseCandidates(candidatesInput, existing ?? []));
   if (!candidates.length) return response({ ok: true, phase: "batch", created: 0, updated: 0, review: 0, duplicates: 0, observations: 0, errors: ["No candidates passed validation"] });
 
   const existingIds = [...new Set(candidates.flatMap((candidate) => candidate.matched ? [candidate.matched.id] : []))];
