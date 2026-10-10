@@ -7,6 +7,11 @@ import { submissionTypes } from "@/lib/event-submission";
 type EditableEvent = Record<string, string | number | boolean | null | undefined>;
 const inputClass = "focus-ring min-h-11 rounded-md border border-ink/20 bg-paper px-3 py-2 font-normal";
 export function SubmitEventForm({ event }: { event?: EditableEvent }) {
+  const [formVersion, setFormVersion] = useState(0);
+  return <EventSubmissionForm key={formVersion} event={event} onAddAnother={() => setFormVersion(version => version + 1)} />;
+}
+
+function EventSubmissionForm({ event, onAddAnother }: { event?: EditableEvent; onAddAnother: () => void }) {
   const [state, formAction, pending] = useActionState(submitMissingEvent, { ok: false, message: "" });
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(Object.entries(event ?? {}).map(([name, value]) => [name, String(value ?? "").replace(/^(\d{2}:\d{2}):\d{2}$/, "$1")])));
   const [bookingRequired, setBookingRequired] = useState(event?.booking_required === true);
@@ -18,7 +23,7 @@ export function SubmitEventForm({ event }: { event?: EditableEvent }) {
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" });
   const firstDate = event?.start_date && String(event.start_date) < today ? String(event.start_date) : today;
   const field = (name: string, label: string, type = "text", required = false, maxLength = 180) => <label className="grid gap-1 text-sm font-bold">{label}{required ? " *" : ""}<input name={name} type={type} lang="en-GB" required={required} maxLength={maxLength} min={type === "date" ? name === "end_date" ? value("start_date") || firstDate : firstDate : undefined} step={type === "time" ? 60 : undefined} value={value(name)} onChange={event => change(name, event.target.value)} className={inputClass} /></label>;
-  if (state.ok) return <div role="status" className="mt-6 rounded-lg border border-racing/30 bg-paper p-6"><h2 className="font-serif text-3xl">{event ? "Changes saved" : "Your event is live"}</h2><p className="mt-3">{state.message}</p><div className="mt-5 flex flex-wrap gap-4"><Link href={state.eventUrl || "/events?radius=uk"} className="focus-ring rounded-md bg-racing px-4 py-3 font-bold text-paper">View event</Link><Link href="/submit-event" className="focus-ring px-4 py-3 font-bold underline">Manage your events</Link><Link href="/submit-event/new" className="focus-ring px-4 py-3 font-bold underline">Add another event</Link></div></div>;
+  if (state.ok) return <div role="status" className="mt-6 rounded-lg border border-racing/30 bg-paper p-6"><h2 className="font-serif text-3xl">{event ? "Changes saved" : "Your event is live"}</h2><p className="mt-3">{state.message}</p><div className="mt-5 flex flex-wrap gap-4"><Link href={state.eventUrl || "/events?radius=uk"} className="focus-ring rounded-md bg-racing px-4 py-3 font-bold text-paper">View event</Link><Link href="/submit-event" className="focus-ring px-4 py-3 font-bold underline">Manage your events</Link>{event ? <Link href="/submit-event/new" className="focus-ring px-4 py-3 font-bold underline">Add another event</Link> : <button type="button" onClick={onAddAnother} className="focus-ring px-4 py-3 font-bold underline">Add another event</button>}</div></div>;
   return <form action={formAction} className="mt-6 grid gap-6 rounded-lg border border-ink/10 bg-paper p-5 shadow-soft sm:p-7">
     {event?.id ? <input type="hidden" name="event_id" value={String(event.id)} /> : null}
     <p className="text-sm text-muted">Fields marked * are required. {event?.status === "cancelled" ? "Changes save immediately. Cancelled listings remain out of the directory." : event ? "Changes appear publicly as soon as they save." : "Your event appears publicly as soon as it saves."}</p>

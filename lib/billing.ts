@@ -26,7 +26,7 @@ export function validateRoadbookPrice(price: StripeRecord, plan: BillingPlan, li
   const recurring = record(price.recurring);
   if (!price.active || price.livemode !== live || price.type !== "recurring" || price.currency !== "gbp" || price.unit_amount !== (plan === "annual" ? 1500 : 200)
     || recurring.interval !== (plan === "annual" ? "year" : "month") || recurring.interval_count !== 1 || recurring.usage_type !== "licensed"
-    || price.billing_scheme !== "per_unit" || price.custom_unit_amount != null) throw new Error("The Roadbook price is not configured correctly.");
+    || price.billing_scheme !== "per_unit" || price.custom_unit_amount != null || price.tax_behavior !== "inclusive") throw new Error("The Roadbook price is not configured correctly.");
 }
 
 export function subscriptionSnapshot(subscription: StripeRecord, allowedPrices: string[], now = Date.now()) {

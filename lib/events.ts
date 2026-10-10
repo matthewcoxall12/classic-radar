@@ -76,7 +76,7 @@ export async function getEvents(
 }
 
 export async function getUpcomingEvents(limit = 3) {
-  return getEvents({ date: "all", radius: "europe" }, limit);
+  return getEvents({ date: "all", radius: "uk" }, limit);
 }
 
 export async function getEventBySlug(

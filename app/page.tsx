@@ -29,7 +29,7 @@ export default async function HomePage() {
           <h1>Find your next great motoring day.</h1>
           <p className="hero-intro">
             The village meet. The legendary circuit. The Sunday worth getting up
-            for. Discover classic car events across the UK and Europe.
+            for. Discover classic car events across the UK.
           </p>
           <Link className="text-link" href="/events?radius=uk">
             Explore the calendar <ArrowUpRight size={20} />

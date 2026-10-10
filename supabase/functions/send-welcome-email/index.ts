@@ -152,12 +152,17 @@ Deno.serve(async (request: Request) => {
   }
 
   let claimed = false;
+  let deliveryMayHaveBeenAccepted = false;
   try {
     claimed = await claim(userId);
     if (!claimed) return response(request, { ok: true, sent: false, reason: "already_processed" });
 
     const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
     const content = welcomeContent(String(metadata.full_name ?? metadata.name ?? ""));
+    // A timeout or an accepted response followed by a ledger failure does not
+    // prove that no email was sent. Keep that claim for reconciliation rather
+    // than allowing a duplicate after the provider's idempotency window ends.
+    deliveryMayHaveBeenAccepted = true;
     const mail = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -174,6 +179,7 @@ Deno.serve(async (request: Request) => {
       signal: AbortSignal.timeout(15_000)
     });
 
+    if (!mail.ok) deliveryMayHaveBeenAccepted = false;
     const resultText = await mail.text();
     if (!mail.ok) {
       console.error(`Resend rejected welcome delivery (${mail.status}): ${resultText.slice(0, 500)}`);
@@ -191,7 +197,7 @@ Deno.serve(async (request: Request) => {
     return response(request, { ok: true, sent: true });
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
-    if (claimed) await releaseClaim(userId);
+    if (claimed && !deliveryMayHaveBeenAccepted) await releaseClaim(userId);
     return response(request, { ok: false, error: "Welcome email service failed" }, 500);
   }
 });

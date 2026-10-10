@@ -1,3 +1,8 @@
+/** Accept server secret or restricted keys only in the deployment's own mode. */
+export function stripeKeyMatchesMode(key: string, live: boolean): boolean {
+  return (live ? /^(?:sk|rk)_live_[A-Za-z0-9]+$/ : /^(?:sk|rk)_test_[A-Za-z0-9]+$/).test(key);
+}
+
 /** Pure fail-closed billing deployment policy; never trust request host headers. */
 export function resolveBillingEnvironment(env: Record<string, string | undefined>) {
   const production = env.VERCEL_ENV === "production";

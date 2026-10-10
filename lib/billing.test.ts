@@ -20,7 +20,7 @@ test("Stripe signatures validate raw bytes, secret, timestamp and rotation witho
   ] as const) assert.equal(verifyStripeSignature(payload, header, key, now), false);
 });
 
-const annualPrice = { active: true, livemode: true, type: "recurring", currency: "gbp", unit_amount: 1500, billing_scheme: "per_unit", recurring: { interval: "year", interval_count: 1, usage_type: "licensed" } };
+const annualPrice = { active: true, livemode: true, type: "recurring", currency: "gbp", unit_amount: 1500, billing_scheme: "per_unit", tax_behavior: "inclusive", recurring: { interval: "year", interval_count: 1, usage_type: "licensed" } };
 test("checkout refuses wrong currency, amount, plan interval, inactive or test prices", () => {
   assert.doesNotThrow(() => validateRoadbookPrice(annualPrice, "annual"));
   assert.doesNotThrow(() => validateRoadbookPrice({ ...annualPrice, livemode: false }, "annual", false));
@@ -29,6 +29,14 @@ test("checkout refuses wrong currency, amount, plan interval, inactive or test p
   assert.throws(() => validateRoadbookPrice(annualPrice, "monthly"));
   for (const override of [{ currency: "usd" }, { unit_amount: 120 }, { active: false }, { livemode: false }, { type: "one_time" }, { billing_scheme: "tiered" }, { recurring: { interval: "month", interval_count: 1, usage_type: "licensed" } }]) {
     assert.throws(() => validateRoadbookPrice({ ...annualPrice, ...override }, "annual"));
+  }
+});
+
+test("advertised Roadbook amounts must include tax rather than acquire additional tax at checkout", () => {
+  for (const tax_behavior of ["exclusive", "unspecified", undefined, null]) {
+    assert.throws(() => validateRoadbookPrice({ ...annualPrice, tax_behavior }, "annual"));
+    assert.throws(() => validateRoadbookPrice({ ...annualPrice, unit_amount: 200, tax_behavior,
+      recurring: { interval: "month", interval_count: 1, usage_type: "licensed" } }, "monthly"));
   }
 });
 
