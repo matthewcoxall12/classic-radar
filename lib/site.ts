@@ -6,12 +6,9 @@ export const siteDescription =
   "Find classic car shows, local meets, autojumbles, road runs, club events and museum days across the UK.";
 
 export function siteUrl() {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  try {
-    return new URL(configured || "https://classicsgo.com");
-  } catch {
-    return new URL("https://classicsgo.com");
-  }
+  // Public identity must never inherit an old Vercel/preview environment value.
+  // Request origins for auth and checkout are handled separately by those routes.
+  return new URL("https://classicsgo.com");
 }
 
 export function absoluteUrl(path = "/") {

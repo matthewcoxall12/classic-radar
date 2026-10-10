@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { eventTimes } from "./event-timing.ts";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -24,17 +25,20 @@ export function safeExternalUrl(value?: string | null) {
   }
 }
 
-export function formatEventDate(event: { start_date: string; start_time?: string | null; end_date?: string | null }) {
-  const date = new Date(`${event.start_date}T12:00:00`);
-  const formatted = new Intl.DateTimeFormat("en-GB", {
+export function formatEventDate(event: { start_date: string; start_time?: string | null; end_date?: string | null; end_time?: string | null; created_by?: string | null }) {
+  const format = (value: string) => new Intl.DateTimeFormat("en-GB", {
     weekday: "short",
     day: "numeric",
     month: "short",
-    year: "numeric"
-  }).format(date);
-
-  if (!event.start_time) return formatted;
-  return `${formatted}, ${event.start_time.slice(0, 5)}`;
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T12:00:00Z`));
+  const { start, end } = eventTimes(event);
+  const first = `${format(event.start_date)}${start ? `, ${start.slice(0, 5)}` : ""}`;
+  if (event.end_date && event.end_date !== event.start_date) {
+    return `${first} – ${format(event.end_date)}${end ? `, ${end.slice(0, 5)}` : ""}`;
+  }
+  return `${first}${end ? ` – ${end.slice(0, 5)}` : ""}`;
 }
 
 export function haversineMiles(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) {

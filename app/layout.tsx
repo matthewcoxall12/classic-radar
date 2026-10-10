@@ -10,6 +10,7 @@ import "@fontsource/dm-sans/500.css";
 import "@fontsource/dm-sans/600.css";
 import { getViewer } from "@/lib/auth";
 import { siteDescription, siteName, siteUrl } from "@/lib/site";
+import { serializeStructuredData, siteStructuredData } from "@/lib/structured-data";
 import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
 
@@ -21,6 +22,7 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   applicationName: siteName,
+  robots: { "max-image-preview": "large" },
   verification: {
     google: "IFlG89rlQL41RjqJ3SNNuu_ddeeGRGssHmFfY7Zq-7g",
   },
@@ -72,19 +74,7 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const viewer = await getViewer();
-  const websiteData = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "ClassicsGo",
-    alternateName: "ClassicsGo classic car events",
-    url: siteUrl().toString(),
-    description: siteDescription,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${siteUrl().toString()}events?q={search_term_string}&radius=uk`,
-      "query-input": "required name=search_term_string",
-    },
-  };
+  const websiteData = siteStructuredData();
 
   return (
     <html lang="en-GB" data-scroll-behavior="smooth">
@@ -92,7 +82,7 @@ export default async function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(websiteData).replaceAll("<", "\\u003c"),
+            __html: serializeStructuredData(websiteData),
           }}
         />
       </head>

@@ -12,6 +12,12 @@ const nextConfig: NextConfig = {
         has: [{ type: "host", value: "www.classicsgo.com" }],
         destination: "https://classicsgo.com/:path*",
         permanent: true
+      },
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "classic-radar.vercel.app" }],
+        destination: "https://classicsgo.com/:path*",
+        permanent: true
       }
     ];
   },

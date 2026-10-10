@@ -10,12 +10,19 @@ import { hasValidCoordinatePair } from "@/lib/geocoding";
 
 type Params = Promise<{ [key: string]: string | string[] | undefined }>;
 
-export const metadata: Metadata = {
-  title: "Classic car events",
-  description:
-    "Search classic car shows, meets, autojumbles, rallies, club events and museum days across the UK.",
-  alternates: { canonical: "/events" },
-};
+export async function generateMetadata({ searchParams }: { searchParams: Params }): Promise<Metadata> {
+  const params = await searchParams;
+  const page = Math.min(10000, Math.max(1, Number.parseInt(String(params.page || "1"), 10) || 1));
+  const filtered = Object.entries(params).some(([key, value]) => value &&
+    key !== "page" && !(key === "radius" && ["uk", "europe"].includes(String(value))) &&
+    !(key === "date" && value === "all") && !(key === "sort" && value === "date"));
+  return {
+    title: page > 1 ? `Classic car events – page ${page}` : "Classic car events",
+    description: "Search classic car shows, meets, autojumbles, rallies, club events and museum days across the UK.",
+    alternates: { canonical: page > 1 && !filtered ? `/events?page=${page}` : "/events" },
+    ...(filtered ? { robots: { index: false, follow: true } } : {}),
+  };
+}
 
 export default async function EventsPage({
   searchParams,
@@ -28,7 +35,8 @@ export default async function EventsPage({
     : params.types
       ? [params.types]
       : [];
-  const radius = params.radius === "europe" ? "uk" : typeof params.radius === "string" ? params.radius : "50";
+  const radius = params.radius === "europe" ? "uk" : typeof params.radius === "string" ? params.radius :
+    params.location || params.lat || params.lng ? "50" : "uk";
   const page = Math.min(10000, Math.max(
     1,
     Number.parseInt(typeof params.page === "string" ? params.page : "1", 10) ||
@@ -83,7 +91,7 @@ export default async function EventsPage({
           the official organiser wherever possible.
         </p>
       </div>
-      <EventFilters searchParams={params} />
+      <EventFilters searchParams={{ ...params, radius }} />
       {hasLocation ? (
         <p className="mt-6 text-sm font-bold text-muted">
           {`Page ${page}`} · upcoming
