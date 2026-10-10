@@ -179,8 +179,9 @@ export function AccountSecurityControls({ canDelete }: { canDelete: boolean }) {
           </>
         ) : (
           <p className="mt-2 text-sm leading-6 text-muted">
-            Administrator and active paid-plan accounts require a manual
-            ownership or billing check before deletion. Email{" "}
+            Administrator, Roadbook and Stripe-linked accounts require a manual
+            ownership or billing check before deletion. We must close any pending
+            checkout and verify that no further payments can occur. Email{" "}
             <a
               href="mailto:matthewcoxall@googlemail.com"
               className="font-bold text-oxblood"

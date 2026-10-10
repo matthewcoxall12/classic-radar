@@ -9,6 +9,9 @@ import {
   Search,
 } from "lucide-react";
 import Link from "next/link";
+import { BillingControls } from "@/components/BillingControls";
+import { paidBillingReady, billingConfig, billingRpc } from "@/lib/billing-server";
+import { getViewer } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Membership",
@@ -23,6 +26,7 @@ const freeFeatures = [
   "Open official organiser and social links",
   "Mark “I’m going” and see public attendance",
   "Publish your own events with details, links and photos",
+  "Read and write reviews after events",
 ];
 const paidFeatures = [
   "Everything in Free",
@@ -33,7 +37,12 @@ const paidFeatures = [
   "Download event plans to your calendar",
 ];
 
-export default function MembershipPage() {
+export default async function MembershipPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [ready, viewer, params] = await Promise.all([paidBillingReady(), getViewer(), searchParams]);
+  let canManage = false;
+  if (viewer && billingConfig().serverReady) {
+    try { canManage = !!(await billingRpc("billing_customer_for_user", { p_user_id: viewer.id })); } catch { /* Availability stays truthful when billing storage is unavailable. */ }
+  }
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <div className="mx-auto max-w-3xl text-center">
@@ -49,6 +58,7 @@ export default function MembershipPage() {
           weekends around the cars they love.
         </p>
       </div>
+      {params.checkout === "complete" ? <p role="status" className="mt-6 rounded-xl bg-cream p-5 text-center text-sm font-bold">{viewer?.canUseRoadbook ? "Roadbook is active. Your next weekend starts here." : "Thanks. Roadbook activates after Stripe confirms your subscription. Refresh this page in a moment; contact Matthew if access does not appear."}</p> : params.checkout === "cancelled" ? <p role="status" className="mt-6 rounded-xl bg-cream p-5 text-center text-sm">Checkout closed. You can return whenever you are ready.</p> : null}
       <div className="mt-10 grid gap-6 md:grid-cols-2">
         <Plan
           title="Free"
@@ -67,19 +77,12 @@ export default function MembershipPage() {
         />
         <Plan
           title="Roadbook"
-          price="Early access"
+          price={ready ? "£15/year or £2/month" : "Early access"}
           description="For a shortlist today and a great weekend tomorrow."
           features={paidFeatures}
           featured
           icon={<Crown className="h-7 w-7" />}
-          action={
-            <Link
-              href="mailto:matthewcoxall@googlemail.com?subject=ClassicsGo%20Roadbook%20early%20access"
-              className="focus-ring inline-flex min-h-11 items-center justify-center rounded-md bg-brass px-5 text-sm font-black text-racing"
-            >
-              Request early access
-            </Link>
-          }
+          action={<BillingControls ready={ready} signedIn={!!viewer} hasAccess={viewer?.canUseRoadbook === true} canManage={canManage} />}
         />
       </div>
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -98,10 +101,10 @@ export default function MembershipPage() {
       </div>
       <div className="mt-10 rounded-xl border border-brass/40 bg-brass/10 p-6 text-center">
         <p className="font-bold text-ink">
-          Roadbook is open by invitation. No payment is required for early access.
+          {ready ? "£15 per year or £2 per month. Secure billing with Stripe." : "Roadbook is open by invitation. No payment is required for early access."}
         </p>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Request access using the email on your ClassicsGo account. Access is enabled individually; sending a request does not start a subscription. Pricing and billing terms will be shown before paid membership launches. Automated alerts, garage profiles and multiple saved search areas are planned for later and are not included yet.
+          {ready ? <>Your subscription renews automatically at £15 a year or £2 a month, depending on the plan you choose. Annual membership saves £9 compared with 12 monthly payments. Cancel in billing management at any time to stop the next renewal; access continues until the end of your paid period. Your final price and renewal terms appear in Stripe Checkout before payment. Read our <Link href="/terms" className="underline">terms</Link>. </> : <>Request access using the email on your ClassicsGo account. Access is enabled individually; sending a request does not start a subscription. Paid checkout is not open yet. </>}Automated alerts, garage profiles and multiple saved search areas are planned for later and are not included yet.
         </p>
       </div>
     </section>

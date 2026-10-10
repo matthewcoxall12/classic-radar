@@ -35,7 +35,7 @@ See [docs/event-discovery.md](docs/event-discovery.md) for extraction, schedulin
 
 ## Public configuration
 
-The website needs `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. Set `NEXT_PUBLIC_SITE_URL=https://classicsgo.com` for canonical production metadata. No service-role, cron, agent or search-provider secret belongs in Vercel.
+The website needs `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. Set `NEXT_PUBLIC_SITE_URL=https://classicsgo.com` for canonical production metadata. Optional paid billing requires a server-only Supabase secret and Stripe secrets in Vercel; never prefix these with NEXT_PUBLIC. Cron, agent and search-provider secrets remain outside the website runtime. See [billing operations](docs/billing-operations.md).
 
 ## Account and operational email
 
