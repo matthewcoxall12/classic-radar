@@ -1,7 +1,7 @@
 export const submissionTypes = ["Classic car show", "Cars & coffee", "Club meet", "Autojumble", "Rally / road run", "Motorsport", "Museum / venue event", "American / hot rod", "Vintage / pre-war", "Marque-specific"] as const;
 export const MAX_EVENT_IMAGE_BYTES = 3 * 1024 * 1024;
 export type SubmissionFields = Record<string, string | undefined>;
-export function parseEventSubmission(fields: SubmissionFields, today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" })) {
+export function parseEventSubmission(fields: SubmissionFields, today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" }), options: { allowPastStartDate?: boolean } = {}) {
   const text = (key: string, max: number, required = false) => {
     const value = (fields[key] ?? "").normalize("NFKC").replace(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f\p{Cf}]/gu, "").trim();
     if (value.length > max || (required && !value)) throw new Error(`Please complete ${key.replaceAll("_", " ")} (maximum ${max} characters).`);
@@ -25,7 +25,7 @@ export function parseEventSubmission(fields: SubmissionFields, today = new Date(
   if (description.length < 30) throw new Error("Please describe the event in at least 30 characters.");
   const start_date = date("start_date", true)!;
   const end_date = date("end_date");
-  if (start_date < today) throw new Error("Please choose today or a future event date.");
+  if (start_date < today && !options.allowPastStartDate) throw new Error("Please choose today or a future event date.");
   if (start_date > `${Number(today.slice(0, 4)) + 3}${today.slice(4)}`) throw new Error("Please choose an event within the next three years.");
   if (end_date && end_date > `${Number(today.slice(0, 4)) + 3}${today.slice(4)}`) throw new Error("Please choose an end date within the next three years.");
   if (end_date && end_date < start_date) throw new Error("The end date cannot be before the start date.");

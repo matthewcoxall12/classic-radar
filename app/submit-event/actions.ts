@@ -16,21 +16,30 @@ export async function submitMissingEvent(_previous: EventSubmissionState, formDa
   const fields = Object.fromEntries([...formData.entries()].filter((entry): entry is [string, string] => typeof entry[1] === "string"));
   let imagePath: string | undefined;
   let persistedSlug: string | undefined;
+  let persistedCancelled = false;
   try {
-    const details = parseEventSubmission(fields);
     const editingId = fields.event_id;
     if (editingId && !/^[a-f0-9-]{36}$/i.test(editingId)) throw new Error("That event could not be found.");
     const id = editingId || randomUUID();
-    let previous: { slug: string; image_url: string | null; status: string } | null = null;
+    let previous: { slug: string; image_url: string | null; status: string; start_date: string } | null = null;
     if (editingId) {
-      const { data, error } = await supabase.from("events").select("slug,image_url,status").eq("id", id).eq("created_by", userId).in("status", ["published", "cancelled"]).maybeSingle();
+      const { data, error } = await supabase.from("events").select("slug,image_url,status,start_date").eq("id", id).eq("created_by", userId).in("status", ["published", "cancelled"]).maybeSingle();
       if (error || !data) throw new Error("You can only edit events published by your account.");
       previous = data;
     }
+    // Only a server-verified owner may retain the listing's existing past date.
+    // A new listing, or a changed date, must still be today or in the future.
+    const details = parseEventSubmission(fields, undefined, { allowPastStartDate: Boolean(previous && previous.start_date === fields.start_date) });
     const location = await geocodeLocation(details.postcode);
     if (!location) throw new Error("We could not locate that postcode. Check the venue postcode and try again.");
     let image_url = previous?.image_url ?? null;
     const image = formData.get("image");
+    const removeImage = fields.remove_image === "on";
+    if (removeImage && image instanceof File && image.size > 0) throw new Error("Choose either a replacement photograph or Remove current photograph, then try again.");
+    if (removeImage) {
+      if (!previous?.image_url) throw new Error("There is no existing photograph to remove.");
+      image_url = null;
+    }
     if (image instanceof File && image.size > 0) {
       if (fields.image_rights !== "on") throw new Error("Please confirm you have permission to publish the photograph.");
       if (image.size > MAX_EVENT_IMAGE_BYTES) throw new Error("Choose a photograph smaller than 3 MB.");
@@ -53,7 +62,8 @@ export async function submitMissingEvent(_previous: EventSubmissionState, formDa
       throw new Error("We could not save your event. Your form is still here; please try again.");
     }
     persistedSlug = result.data.slug;
-    if (imagePath && previous?.image_url) {
+    persistedCancelled = previous?.status === "cancelled";
+    if ((imagePath || removeImage) && previous?.image_url) {
       const oldPath = previous.image_url.split("/storage/v1/object/public/event-images/")[1];
       if (oldPath?.startsWith(`${userId}/${id}/`)) await supabase.storage.from("event-images").remove([oldPath]);
     }
@@ -63,7 +73,7 @@ export async function submitMissingEvent(_previous: EventSubmissionState, formDa
     // Once committed, never delete the photograph that the live listing uses.
     if (persistedSlug) {
       console.error("ClassicsGo post-publish refresh failed", { eventSlug: persistedSlug });
-      return { ok: true, message: "Your event is saved and live.", eventUrl: `/events/${persistedSlug}` };
+      return { ok: true, message: persistedCancelled ? "Your changes are saved. The event stays cancelled until you restore it from My event listings." : "Your event is saved and live.", eventUrl: `/events/${persistedSlug}` };
     }
     if (imagePath) await supabase.storage.from("event-images").remove([imagePath]);
     const image = formData.get("image");

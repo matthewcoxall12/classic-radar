@@ -13,6 +13,12 @@ test("impossible dates, past dates, reversed ranges and overnight mistakes are r
 test("publication needs useful description, full UK postcode, booking link and accuracy consent", () => {
   for (const changes of [{ description: "Car meet" }, { postcode: "EX15" }, { booking_required: "on" }, { accurate: "" }, { venue_name: "" }]) assert.throws(() => parseEventSubmission({ ...valid, ...changes }, "2026-10-10"));
 });
+test("past date stays invalid for new listings but an authenticated owner can retain the existing date", () => {
+  const pastEvent = { ...valid, start_date: "2026-09-01" };
+  assert.throws(() => parseEventSubmission(pastEvent, "2026-10-10"));
+  assert.doesNotThrow(() => parseEventSubmission(pastEvent, "2026-10-10", { allowPastStartDate: true }));
+  assert.throws(() => parseEventSubmission({ ...pastEvent, end_date: "2026-08-31" }, "2026-10-10", { allowPastStartDate: true }));
+});
 test("unsafe and credential-bearing source URLs cannot be submitted", () => {
   for (const organiser_url of ["javascript:alert(1)", "https://user:password@example.com", "http://127.0.0.1/events", "https://example.com/" + "a".repeat(1001)]) assert.throws(() => parseEventSubmission({ ...valid, organiser_url }, "2026-10-10"));
 });
