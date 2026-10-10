@@ -1,5 +1,17 @@
 -- Run only against the intended project after migration; all mutations roll back.
 begin;
+-- Ingestion must remain able to update listings without private-schema access.
+set local role service_role;
+do $$
+declare touched integer;
+begin
+  update public.events set title=title where id=(select id from public.events where status='published' limit 1);
+  get diagnostics touched=row_count;
+  if touched<>1 then raise exception 'Trusted ingestion could not update a published event'; end if;
+  if has_schema_privilege(current_user,'private','usage') then raise exception 'Ingestion unexpectedly has private-schema access'; end if;
+end;
+$$;
+reset role;
 insert into auth.users(id,email,raw_user_meta_data) values ('fd100000-0000-4000-8000-000000000010','event-owner-qa@example.invalid','{}'::jsonb),('fd100000-0000-4000-8000-000000000011','event-other-qa@example.invalid','{}'::jsonb);
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"fd100000-0000-4000-8000-000000000010","role":"authenticated"}',true);

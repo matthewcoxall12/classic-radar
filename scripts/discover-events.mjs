@@ -114,6 +114,7 @@ function clockTime(value) {
 }
 
 function safePublicUrl(value, base) {
+  if (typeof value !== "string" || !value.trim()) return null;
   let url;
   try {
     url = new URL(String(value ?? ""), base);

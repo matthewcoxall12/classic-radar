@@ -1,6 +1,6 @@
 # Roadbook billing operations
 
-Paid checkout stays disabled until the new ClassicsGo Stripe financial account is onboarded and the complete payment flow is verified. The owner created a separate ClassicsGo account using teammakeit3d@gmail.com; onboarding remains incomplete. No prices, charges or payout changes were made.
+Paid checkout stays disabled until the new ClassicsGo Stripe financial account is onboarded and the complete payment flow is verified. The owner created a separate ClassicsGo account using teammakeit3d@gmail.com; onboarding remains incomplete. No live charges or payout changes were made. The ClassicsGo account test mode now has one Roadbook product and two recurring GBP prices (see below); live prices and completed provider integration remain outstanding.
 
 ## Configuration and launch
 
@@ -23,3 +23,18 @@ Subscription cancellation stops renewal; access ends at the paid period boundary
 ## Optional welcome email
 
 Sign-in works without welcome delivery. Supabase still needs RESEND_API_KEY and WELCOME_EMAIL_FROM with the Resend-verified sender ClassicsGo <welcome@mail.classicsgo.com>. The mail.classicsgo.com domain has been created in Resend; its two CNAME records and DKIM TXT record await Squarespace owner access. A paid Google Workspace mailbox is not required for sender-domain DNS verification. Replies use matthewcoxall@googlemail.com; Gmail/Googlemail must not be used as the Resend From address. No welcome email was sent during this work.
+
+## 10 October follow-up: sandbox catalogue and customer cancellation
+
+The account test mode `acct_1UOy6SBKvYr7hh3N` contains product `prod_VPq5g5b02kpI5W` (ClassicsGo Roadbook). These are TEST prices only; never configure them for production:
+
+- Annual: `price_1UP0PTBKvYr7hh3NOhI5xce2` — GBP 1500/year, tax-inclusive.
+- Monthly: `price_1UP0QnBKvYr7hh3NvBIWSll9` — GBP 200/month, tax-inclusive; lookup key `classicsgo_roadbook_monthly_gbp_v1`.
+
+This is the live account's existing test mode, distinct from the separate `acct_1UOy6cAwhU3FQneZ` sandbox. Keys, products and webhooks must all belong to the same selected test environment. Nothing has been charged, and neither secret was read or copied.
+
+The public Terms now give a full first-payment refund when cancellation is requested within 14 days, even after use. This is deliberately distinct from portal cancellation at period end. Process requests manually in Stripe, stop renewal, reconcile entitlement and refund through the original payment method within 14 days. No automatic refund API or automatic email delivery is claimed. Before enabling paid membership, publish the owner's confirmed business/contact postal address and verify the contractual details are available to customers in a durable form.
+
+Google branding still displays the old ownership issue and explicitly requires waiting 24 hours after Search Console verification. Earliest planned retry: 11 October 2026 at approximately 11:22 UTC / 12:22 UK time. Personal Google login itself passed earlier.
+
+Test customer portal default configuration `bpc_1UP0SmBKvYr7hh3NFdwQh5E3` was saved with a ClassicsGo Roadbook header and return URL https://classicsgo.com/membership. Invoice history, payment-method updates and period-end cancellation are enabled; arbitrary plan/quantity switching stays off. Public business policy links remain blocked by incomplete merchant activation. This is configuration evidence, not a completed member portal journey.
