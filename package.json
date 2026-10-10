@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "discover": "node scripts/discover-events.mjs",
-    "test:discovery": "node --test lib/geocoding.test.ts lib/supabase/config.test.ts tests/discovery-worker.test.mjs lib/event-search.test.ts lib/event-photography.test.ts"
+    "test:discovery": "node --test lib/geocoding.test.ts lib/supabase/config.test.ts tests/discovery-worker.test.mjs lib/event-search.test.ts lib/event-photography.test.ts supabase/functions/ingest-events/merge.test.ts"
   },
   "dependencies": {
     "@fontsource/barlow-condensed": "5.3.0",
