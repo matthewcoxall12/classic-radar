@@ -17,7 +17,9 @@ export function EventReviewForm({ eventId, ownReview }: { eventId: string; ownRe
     else if (result.ok && result.saved) { setHasReview(true); setDeleteConfirmed(false); }
     return result;
   }, { ok: false, message: "" });
-  return <form action={action} className="mt-6 grid gap-4 rounded-lg border border-ink/15 bg-paper p-5">
+  // A resolved action triggers a native reset even when this form stays mounted.
+  // Keep the saved rating and retry inputs; successful deletion clears state above.
+  return <form action={action} onReset={event => event.preventDefault()} className="mt-6 grid gap-4 rounded-lg border border-ink/15 bg-paper p-5">
     <input type="hidden" name="event_id" value={eventId} />
     <h3 className="font-serif text-2xl font-semibold">{hasReview ? "Your review" : "Share your experience"}</h3>
     <p className="text-sm leading-6 text-muted">Share what helped you enjoy the day and what could be improved. Your profile display name and review are public; your email is not shown. One review per person, per event.</p>
