@@ -24,7 +24,14 @@ function EventSubmissionForm({ event, onAddAnother }: { event?: EditableEvent; o
   const firstDate = event?.start_date && String(event.start_date) < today ? String(event.start_date) : today;
   const field = (name: string, label: string, type = "text", required = false, maxLength = 180) => <label className="grid gap-1 text-sm font-bold">{label}{required ? " *" : ""}<input name={name} type={type} lang="en-GB" required={required} maxLength={maxLength} min={type === "date" ? name === "end_date" ? value("start_date") || firstDate : firstDate : undefined} step={type === "time" ? 60 : undefined} value={value(name)} onChange={event => change(name, event.target.value)} className={inputClass} /></label>;
   if (state.ok) return <div role="status" className="mt-6 rounded-lg border border-racing/30 bg-paper p-6"><h2 className="font-serif text-3xl">{event ? "Changes saved" : "Your event is live"}</h2><p className="mt-3">{state.message}</p><div className="mt-5 flex flex-wrap gap-4"><Link href={state.eventUrl || "/events?radius=uk"} className="focus-ring rounded-md bg-racing px-4 py-3 font-bold text-paper">View event</Link><Link href="/submit-event" className="focus-ring px-4 py-3 font-bold underline">Manage your events</Link>{event ? <Link href="/submit-event/new" className="focus-ring px-4 py-3 font-bold underline">Add another event</Link> : <button type="button" onClick={onAddAnother} className="focus-ring px-4 py-3 font-bold underline">Add another event</button>}</div></div>;
-  return <form action={formAction} className="mt-6 grid gap-6 rounded-lg border border-ink/10 bg-paper p-5 shadow-soft sm:p-7">
+  return <form action={formAction} onReset={resetEvent => {
+    // A handled validation error still resolves the action, so React requests a
+    // native reset. Preserve the member's choices and consents for their retry.
+    resetEvent.preventDefault();
+    // The server's retry message asks the member to select the photograph again.
+    const image = resetEvent.currentTarget.elements.namedItem("image");
+    if (image instanceof HTMLInputElement) image.value = "";
+  }} className="mt-6 grid gap-6 rounded-lg border border-ink/10 bg-paper p-5 shadow-soft sm:p-7">
     {event?.id ? <input type="hidden" name="event_id" value={String(event.id)} /> : null}
     <p className="text-sm text-muted">Fields marked * are required. {event?.status === "cancelled" ? "Changes save immediately. Cancelled listings remain out of the directory." : event ? "Changes appear publicly as soon as they save." : "Your event appears publicly as soon as it saves."}</p>
     <fieldset className="grid gap-4"><legend className="mb-3 font-serif text-2xl font-semibold">The event</legend>
