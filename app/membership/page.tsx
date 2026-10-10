@@ -82,7 +82,7 @@ export default async function MembershipPage({ searchParams }: { searchParams: P
           features={paidFeatures}
           featured
           icon={<Crown className="h-7 w-7" />}
-          action={<BillingControls ready={ready} signedIn={!!viewer} hasAccess={viewer?.canUseRoadbook === true} canManage={canManage} />}
+          action={<BillingControls testMode={billingConfig().testMode} ready={ready} signedIn={!!viewer} hasAccess={viewer?.canUseRoadbook === true} canManage={canManage} />}
         />
       </div>
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

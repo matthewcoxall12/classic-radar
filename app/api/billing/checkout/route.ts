@@ -21,10 +21,11 @@ export async function POST(request: Request) {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user?.email || !data.user.email_confirmed_at) return billingResponse({ error: "Please sign in again before joining Roadbook." }, 401);
     const user = data.user;
+    if (config.testMode && user.id !== config.testUserId) return billingResponse({ error: "Sandbox checkout is restricted to the dedicated test account." }, 403);
     const { data: profile } = await supabase.from("profiles").select("tier,is_admin,subscription_status,subscription_expires_at").eq("id", user.id).single();
     if (!profile) return billingResponse({ error: "Your account could not be found. Please sign in again." }, 409);
     if (hasRoadbook(profile)) return billingResponse({ error: "Roadbook is already active on your account. Manage any subscription from Membership." }, 409);
-    validateRoadbookPrice(await stripeRequest(`prices/${encodeURIComponent(price)}`), plan);
+    validateRoadbookPrice(await stripeRequest(`prices/${encodeURIComponent(price)}`), plan, config.live);
     let customer = String(await billingRpc("billing_customer_for_user", { p_user_id: user.id }) || "");
     if (!customer) {
       const created = await stripeRequest("customers", new URLSearchParams({ email: user.email!, "metadata[classicsgo_user_id]": user.id }), `classicsgo-customer-${user.id}`);

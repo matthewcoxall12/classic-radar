@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   let event;
   try { event = record(JSON.parse(body)); } catch { return billingResponse({ error: "Invalid event." }, 400); }
   const type = String(event.type ?? "");
-  if (event.livemode !== true) return billingResponse({ error: "Test events are not accepted by production billing." }, 400);
+  if (event.livemode !== config.live) return billingResponse({ error: "Event mode does not match this billing deployment." }, 400);
   if (!/^evt_[A-Za-z0-9]+$/.test(String(event.id)) || !Number.isSafeInteger(event.created)) return billingResponse({ error: "Invalid event." }, 400);
   if (!EVENTS.has(type)) return billingResponse({ received: true, ignored: true });
   const subscriptionId = subscriptionFromEvent(type, record(record(event.data).object));
@@ -24,6 +24,7 @@ export async function POST(request: Request) {
     const observedAt = new Date().toISOString();
     const subscription = await stripeRequest(`subscriptions/${encodeURIComponent(subscriptionId)}`);
     const snapshot = subscriptionSnapshot(subscription, config.allowedPrices);
+    if (config.testMode && await billingRpc("billing_customer_for_user", { p_user_id: config.testUserId }) !== snapshot.customerId) return billingResponse({ error: "Sandbox customer is not allowlisted." }, 403);
     await billingRpc("billing_apply_subscription", {
       p_event_id: event.id, p_event_created: event.created, p_observed_at: observedAt,
       p_customer_id: snapshot.customerId, p_subscription_id: snapshot.subscriptionId,
