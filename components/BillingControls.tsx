@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { LoaderCircle } from "lucide-react";
 
-export function BillingControls({ ready, signedIn, hasAccess, canManage }: { ready: boolean; signedIn: boolean; hasAccess: boolean; canManage: boolean }) {
+export function BillingControls({ ready, signedIn, hasAccess, canManage, testMode = false }: { testMode?: boolean; ready: boolean; signedIn: boolean; hasAccess: boolean; canManage: boolean }) {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   async function openBilling(kind: "checkout" | "portal", plan: "annual" | "monthly" = "annual") {
@@ -20,6 +20,7 @@ export function BillingControls({ ready, signedIn, hasAccess, canManage }: { rea
     } catch { setMessage("Billing could not connect. Please try again or email Matthew."); setPending(false); }
   }
   return <div className="grid gap-3">
+    {testMode ? <p role="status" className="rounded-md border border-brass p-3 text-sm font-black">TEST CHECKOUT: no real charge. Dedicated sandbox account only.</p> : null}
     {hasAccess ? <Link href="/my-events" className="focus-ring inline-flex min-h-11 items-center justify-center rounded-md bg-brass px-5 text-sm font-black text-racing">Open Roadbook</Link>
       : ready ? signedIn ? <div className="grid gap-3"><button disabled={pending} onClick={() => openBilling("checkout", "annual")} className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-brass px-5 text-sm font-black text-racing disabled:opacity-60">{pending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}Join annually · £15/year</button><button disabled={pending} onClick={() => openBilling("checkout", "monthly")} className="focus-ring min-h-11 rounded-md border border-brass/50 px-5 text-sm font-bold disabled:opacity-60">Join monthly · £2/month</button><p className="text-xs">Annual membership saves £9 compared with 12 monthly payments.</p></div>
         : <Link href="/sign-in?return_to=%2Fmembership" className="focus-ring inline-flex min-h-11 items-center justify-center rounded-md bg-brass px-5 text-sm font-black text-racing">Sign in to choose your plan</Link>
