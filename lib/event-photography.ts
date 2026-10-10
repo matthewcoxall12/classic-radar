@@ -29,6 +29,23 @@ export function getEventPhotograph(slug: string) {
     : null;
 }
 
+export function submittedEventImage(event: { id?: string; created_by?: string | null; image_url?: string | null }) {
+  if (!event.id || !event.created_by || !event.image_url) return null;
+  try {
+    const image = new URL(event.image_url);
+    const prefix = `/storage/v1/object/public/event-images/${event.created_by}/${event.id}/`;
+    return image.origin === "https://rnayhhsurmztrohtftqo.supabase.co" &&
+      !image.username && !image.password && !image.search && !image.hash &&
+      image.pathname.startsWith(prefix) &&
+      /^[a-f0-9-]+\.(?:jpe?g|png|webp)$/i.test(image.pathname.slice(prefix.length))
+      ? image.toString() : null;
+  } catch { return null; }
+}
+
+export function eventImageUrl(event: { id?: string; slug: string; created_by?: string | null; image_url?: string | null }) {
+  return submittedEventImage(event) || getEventPhotograph(event.slug)?.src || null;
+}
+
 export function eventDatePanel(date: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   const parsed = new Date(`${date}T12:00:00Z`);

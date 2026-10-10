@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import {
-  BellRing,
+  CalendarDays,
   Bookmark,
   Check,
   Crown,
-  MapPinned,
+  Share2,
   Route,
   Search,
 } from "lucide-react";
@@ -13,25 +13,24 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Membership",
   description:
-    "Compare free ClassicsGo access with the upcoming paid Roadbook planning membership.",
+    "Find classic car events for free. Explore Roadbook private wishlists, weekend plans, notes, sharing and calendar downloads.",
   alternates: { canonical: "/membership" },
 };
 
 const freeFeatures = [
   "Search and browse the full public event calendar",
   "Search by town, postcode, current location and distance",
-  "Save events to a private wishlist",
   "Open official organiser and social links",
   "Mark “I’m going” and see public attendance",
-  "Submit missing events for review",
+  "Publish your own events with details, links and photos",
 ];
 const paidFeatures = [
   "Everything in Free",
-  "Create trip and weekend roadbooks",
-  "Follow multiple home or travel areas",
-  "Garage and vehicle profiles",
-  "Tailored event alerts and reminders",
-  "Ad-free member experience",
+  "Save events to a private wishlist",
+  "Create private trip and weekend roadbooks",
+  "Order event stops and add personal notes",
+  "Share a weekend plan with friends by link",
+  "Download event plans to your calendar",
 ];
 
 export default function MembershipPage() {
@@ -45,8 +44,8 @@ export default function MembershipPage() {
           Find for free. Plan with Roadbook.
         </h1>
         <p className="mt-4 text-lg leading-8 text-muted">
-          The event calendar remains open to everyone. Roadbook will be an
-          optional paid toolkit for enthusiasts who want to organise more
+          The event calendar remains open to everyone. Roadbook is an
+          optional planning toolkit for enthusiasts who want to organise more
           weekends around the cars they love.
         </p>
       </div>
@@ -68,17 +67,17 @@ export default function MembershipPage() {
         />
         <Plan
           title="Roadbook"
-          price="Coming soon"
-          description="For routes, alerts and deeper weekend planning."
+          price="Early access"
+          description="For a shortlist today and a great weekend tomorrow."
           features={paidFeatures}
           featured
           icon={<Crown className="h-7 w-7" />}
           action={
             <Link
-              href="/sign-in?return_to=%2Faccount"
+              href="mailto:matthewcoxall@googlemail.com?subject=ClassicsGo%20Roadbook%20early%20access"
               className="focus-ring inline-flex min-h-11 items-center justify-center rounded-md bg-brass px-5 text-sm font-black text-racing"
             >
-              Create a free account
+              Request early access
             </Link>
           }
         />
@@ -88,22 +87,21 @@ export default function MembershipPage() {
           Keep the events you do not want to lose.
         </Benefit>
         <Benefit icon={<Route />} title="Weekend roadbooks">
-          Coming soon: group stops into weekend plans.
+          Group events into plans, order your stops and keep private notes.
         </Benefit>
-        <Benefit icon={<MapPinned />} title="Multiple areas">
-          Coming soon: follow home and touring areas.
+        <Benefit icon={<Share2 />} title="Share your plans">
+          Send a read-only plan to friends. Switch sharing off whenever you like.
         </Benefit>
-        <Benefit icon={<BellRing />} title="Useful alerts">
-          Coming soon: tailored event alerts and reminders.
+        <Benefit icon={<CalendarDays />} title="Calendar downloads">
+          Take your plans into your own calendar with an all-day event download.
         </Benefit>
       </div>
       <div className="mt-10 rounded-xl border border-brass/40 bg-brass/10 p-6 text-center">
         <p className="font-bold text-ink">
-          Roadbook is not yet taking payments.
+          Roadbook is open by invitation. No payment is required for early access.
         </p>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Pricing and billing terms will be shown clearly before launch.
-          Creating a free account now does not start a trial or subscription.
+          Request access using the email on your ClassicsGo account. Access is enabled individually; sending a request does not start a subscription. Pricing and billing terms will be shown before paid membership launches. Automated alerts, garage profiles and multiple saved search areas are planned for later and are not included yet.
         </p>
       </div>
     </section>

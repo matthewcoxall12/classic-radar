@@ -45,10 +45,10 @@ export const metadata: Metadata = {
     description: siteDescription,
     images: [
       {
-        url: "/images/editorial/weekend-out.webp",
-        width: 1536,
-        height: 1024,
-        alt: "An informal classic car meet with an Austin A35 van, AI-generated illustration",
+        url: "/images/editorial/weekend-meet-v2.webp",
+        width: 1600,
+        height: 800,
+        alt: "An informal village car meet with an Austin van, Mini, Morris Minor and MG Midget",
       },
     ],
   },
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ClassicsGo | Find classic car events near you",
     description: siteDescription,
-    images: ["/images/editorial/weekend-out.webp"],
+    images: ["/images/editorial/weekend-meet-v2.webp"],
   },
 };
 
@@ -130,7 +130,7 @@ export default async function RootLayout({
               <Link href="/events?radius=uk">UK events</Link>
               <Link href="/events?radius=europe">European events</Link>
               <Link href="/membership">Membership</Link>
-              <Link href="/submit-event">Submit an event</Link>
+              <Link href="/submit-event/new">Add an event</Link>
             </div>
             <div className="grid content-start gap-2 text-sm text-paper/70">
               <strong className="mb-1 text-paper">ClassicsGo</strong>

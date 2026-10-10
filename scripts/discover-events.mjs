@@ -8,7 +8,7 @@ import { pathToFileURL } from "node:url";
 const DEFAULT_INGEST_URL =
   "https://rnayhhsurmztrohtftqo.supabase.co/functions/v1/ingest-events";
 const USER_AGENT =
-  "ClassicsGo-Discovery/1.0 (+https://classicsgo.com; support@classicsgo.com)";
+  "ClassicsGo-Discovery/1.0 (+https://classicsgo.com; matthewcoxall@googlemail.com)";
 const MAX_BYTES = 2_000_000;
 const EVENT_WORDS =
   /\b(classic|vintage|historic|heritage|retro|motor|motoring|car|cars|vehicle|vehicles|autojumble|rally|road run|hillclimb|hill climb|concours|auto|automobile|show|meet|festival|race|racing)\b/i;

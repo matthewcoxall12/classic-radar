@@ -33,70 +33,33 @@ export function EventActions({
   const [message, setMessage] = useState("");
   const signInUrl = `/sign-in?return_to=${encodeURIComponent(returnTo)}`;
 
-  async function toggleSaved() {
-    if (!signedIn) {
-      router.push(signInUrl);
-      return;
-    }
-    if (!canSave) return;
-    setPending("saved");
+  async function toggle(kind: "saved" | "going") {
+    if (pending) return;
+    if (!signedIn) { router.push(signInUrl); return; }
+    if (kind === "saved" && !canSave) { router.push("/membership"); return; }
+    setPending(kind);
     setMessage("");
-    const supabase = createClient();
-    const { data } = await supabase.auth.getClaims();
-    const userId = data?.claims?.sub;
-    if (typeof userId !== "string") {
-      router.push(signInUrl);
-      return;
-    }
-    const result = saved
-      ? await supabase
-          .from("saved_events")
-          .delete()
-          .eq("user_id", userId)
-          .eq("event_id", eventId)
-      : await supabase
-          .from("saved_events")
-          .insert({ user_id: userId, event_id: eventId });
-    setPending(null);
-    if (result.error) {
-      setMessage("That change could not be saved. Please try again.");
-      return;
-    }
-    setSaved(!saved);
-    router.refresh();
-  }
-
-  async function toggleGoing() {
-    if (!signedIn) {
-      router.push(signInUrl);
-      return;
-    }
-    setPending("going");
-    setMessage("");
-    const supabase = createClient();
-    const { data } = await supabase.auth.getClaims();
-    const userId = data?.claims?.sub;
-    if (typeof userId !== "string") {
-      router.push(signInUrl);
-      return;
-    }
-    const result = going
-      ? await supabase
-          .from("event_attendance")
-          .delete()
-          .eq("user_id", userId)
-          .eq("event_id", eventId)
-      : await supabase
-          .from("event_attendance")
-          .insert({ user_id: userId, event_id: eventId });
-    setPending(null);
-    if (result.error) {
-      setMessage("Your attendance could not be updated. Please try again.");
-      return;
-    }
-    setGoing(!going);
-    setCount((current) => Math.max(0, current + (going ? -1 : 1)));
-    router.refresh();
+    try {
+      const supabase = createClient();
+      const { data, error: authError } = await supabase.auth.getClaims();
+      const userId = data?.claims?.sub;
+      if (authError || typeof userId !== "string") { router.push(signInUrl); return; }
+      const table = kind === "saved" ? "saved_events" : "event_attendance";
+      const active = kind === "saved" ? saved : going;
+      const result = active
+        ? await supabase.from(table).delete().eq("user_id", userId).eq("event_id", eventId)
+        : await supabase.from(table).upsert({ user_id: userId, event_id: eventId }, { onConflict: "user_id,event_id", ignoreDuplicates: true });
+      if (result.error) throw result.error;
+      if (kind === "saved") setSaved(!active);
+      else {
+        setGoing(!active);
+        const { data: event } = await supabase.from("events").select("going_count").eq("id", eventId).maybeSingle();
+        if (event) setCount(Number(event.going_count) || 0);
+      }
+      router.refresh();
+    } catch {
+      setMessage(kind === "saved" ? "Your wishlist could not be updated. Check your membership and try again." : "Your attendance could not be updated. Please try again.");
+    } finally { setPending(null); }
   }
 
   return (
@@ -104,8 +67,8 @@ export function EventActions({
       <div>
         <button
           type="button"
-          onClick={toggleGoing}
-          disabled={pending === "going"}
+          onClick={() => toggle("going")}
+          disabled={pending !== null}
           aria-pressed={going}
           className={`focus-ring inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-black transition ${going ? "bg-racing text-paper" : "border border-racing/25 bg-racing/5 text-racing"}`}
         >
@@ -121,16 +84,16 @@ export function EventActions({
       </div>
       {!signedIn ? (
         <Link
-          href={signInUrl}
+          href="/membership"
           className="focus-ring inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-ink/15 bg-paper px-4 text-sm font-bold text-ink"
         >
-          <Bookmark className="h-4 w-4" /> Sign in to plan
+          <Crown className="h-4 w-4 text-brass" /> Roadbook wishlist
         </Link>
       ) : canSave ? (
         <button
           type="button"
-          onClick={toggleSaved}
-          disabled={pending === "saved"}
+          onClick={() => toggle("saved")}
+          disabled={pending !== null}
           aria-pressed={saved}
           className={`focus-ring inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-4 text-sm font-bold transition ${saved ? "border-oxblood bg-oxblood/10 text-oxblood" : "border-ink/15 bg-paper text-ink"}`}
         >
@@ -146,7 +109,7 @@ export function EventActions({
           href="/membership"
           className="focus-ring inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-brass/50 bg-brass/10 px-4 text-sm font-bold text-ink"
         >
-          <Crown className="h-4 w-4 text-brass" /> Save event
+          <Crown className="h-4 w-4 text-brass" /> Roadbook wishlist
         </Link>
       )}
       {message ? (

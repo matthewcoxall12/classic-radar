@@ -9,7 +9,7 @@ import { getViewer, safeReturnPath } from "@/lib/auth";
 export const metadata: Metadata = {
   title: "Sign in",
   description:
-    "Sign in securely to save classic car events and manage your ClassicsGo account.",
+    "Sign in securely to mark attendance, publish events and manage your ClassicsGo account.",
   robots: { index: false, follow: false },
 };
 
@@ -23,7 +23,7 @@ export default async function SignInPage({
     typeof params.return_to === "string" ? params.return_to : null,
   );
   if (await getViewer()) redirect(returnTo);
-  const oauthError = params.error === "oauth_failed";
+  const oauthError = params.error === "oauth_failed" || params.error === "oauth_cancelled";
 
   return (
     <section className="page-shell sign-in-layout">
@@ -34,7 +34,7 @@ export default async function SignInPage({
           <br />a place in your diary.
         </h1>
         <p className="text-muted text-sm leading-7 mt-5 mb-8">
-          Join for free to save discoveries, mark attendance and share events
+          Join for free to mark attendance and share events
           with the community.
         </p>
         <div className="h-[300px]">
@@ -47,8 +47,7 @@ export default async function SignInPage({
             className="mb-4 flex items-start gap-2 rounded-md bg-oxblood/10 p-3 text-sm font-bold text-oxblood"
             role="alert"
           >
-            <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" /> Google sign-in
-            was not completed. Please try again.
+            <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" /> {params.error === "oauth_cancelled" ? "Google sign-in was cancelled. Continue whenever you are ready." : "Google sign-in was not completed. Please try again."}
           </p>
         ) : null}
         <AuthForm returnTo={returnTo} />

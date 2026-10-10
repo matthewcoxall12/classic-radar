@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { CalendarDays } from "lucide-react";
-import { eventDatePanel, getEventPhotograph } from "@/lib/event-photography";
+import { eventDatePanel, getEventPhotograph, submittedEventImage } from "@/lib/event-photography";
 import type { ClassicEvent } from "@/lib/types";
 import { eventPhotograph } from "@/lib/photography";
 export function EventImage({
@@ -11,12 +11,14 @@ export function EventImage({
   sizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px",
 }: {
   type: string;
-  event?: Pick<ClassicEvent, "slug" | "title" | "start_date">;
+  event?: Pick<ClassicEvent, "id" | "slug" | "title" | "start_date" | "created_by" | "image_url">;
   seed?: string;
   priority?: boolean;
   sizes?: string;
 }) {
   if (event) {
+    const uploaded = submittedEventImage(event);
+    if (uploaded) return <figure className="event-image"><Image src={uploaded} alt={`${event.title} — image supplied by the event publisher`} fill sizes={sizes} priority={priority} className="object-cover" /></figure>;
     const actual = getEventPhotograph(event.slug);
     if (actual)
       return (
@@ -50,7 +52,6 @@ export function EventImage({
         </div>
         <div className="date-panel-bottom">
           <span>{date?.weekday || "Date to be confirmed"}</span>
-          <span>Event photo to follow</span>
         </div>
       </div>
     );
@@ -66,9 +67,6 @@ export function EventImage({
         priority={priority}
         className="object-cover"
       />
-      <figcaption>
-        Illustrative photograph · <a href="/photography">Credits</a>
-      </figcaption>
     </figure>
   );
 }

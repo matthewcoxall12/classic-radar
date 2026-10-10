@@ -26,7 +26,7 @@ const NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1_000;
 const MAX_CACHE_ENTRIES = 500;
 const NOMINATIM_INTERVAL_MS = 1_000;
 const REQUEST_TIMEOUT_MS = 8_000;
-const APP_USER_AGENT = "ClassicsGo/1.0 (+https://classicsgo.com; support@classicsgo.com)";
+const APP_USER_AGENT = "ClassicsGo/1.0 (+https://classicsgo.com; matthewcoxall@googlemail.com)";
 const EUROPE_COUNTRY_CODES = [
   "ad", "al", "at", "ba", "be", "bg", "by", "ch", "cy", "cz", "de", "dk", "ee", "es", "fi", "fr", "gb",
   "gr", "hr", "hu", "ie", "is", "it", "li", "lt", "lu", "lv", "mc", "md", "me", "mk", "mt", "nl", "no",
@@ -167,7 +167,7 @@ async function lookupNominatim(query: string): Promise<GeocodedLocation | null> 
     url.searchParams.set("addressdetails", "0");
     url.searchParams.set("limit", "1");
     url.searchParams.set("countrycodes", EUROPE_COUNTRY_CODES);
-    url.searchParams.set("email", "support@classicsgo.com");
+    url.searchParams.set("email", "matthewcoxall@googlemail.com");
 
     const response = await fetchNominatim(url);
     if (!response.ok) return null;

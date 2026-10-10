@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   typedRoutes: false,
   poweredByHeader: false,
+  experimental: { serverActions: { bodySizeLimit: "4mb" } },
+  images: { remotePatterns: [{ protocol: "https", hostname: "rnayhhsurmztrohtftqo.supabase.co", pathname: "/storage/v1/object/public/event-images/**" }] },
   async redirects() {
     return [
       {
@@ -35,7 +37,7 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' https://accounts.google.com",
               "style-src 'self' 'unsafe-inline' https://accounts.google.com",
               "font-src 'self' data:",
-              "img-src 'self' data: blob: https://accounts.google.com https://*.googleusercontent.com https://tile.openstreetmap.org",
+              "img-src 'self' data: blob: https://rnayhhsurmztrohtftqo.supabase.co https://accounts.google.com https://*.googleusercontent.com https://tile.openstreetmap.org",
               "connect-src 'self' https://rnayhhsurmztrohtftqo.supabase.co wss://rnayhhsurmztrohtftqo.supabase.co https://accounts.google.com",
               "frame-src https://accounts.google.com",
               "worker-src 'self' blob:",

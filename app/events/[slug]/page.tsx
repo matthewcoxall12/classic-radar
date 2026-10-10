@@ -3,7 +3,7 @@ import { CalendarDays, ExternalLink, MapPin, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { EventImage } from "@/components/EventImage";
 import { EventCard } from "@/components/EventCard";
-import { getEventPhotograph } from "@/lib/event-photography";
+import { eventImageUrl } from "@/lib/event-photography";
 import { notFound } from "next/navigation";
 import { ConfidenceBadge } from "@/components/ConfidenceBadge";
 import { EventActions } from "@/components/EventActions";
@@ -20,23 +20,24 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const event = await getEventBySlug((await params).slug);
   if (!event) return { title: "Event not found" };
-  const description =
-    event.description ||
-    `${event.title} classic car event details, date, location and official organiser link.`;
-  const image = getEventPhotograph(event.slug)?.src;
+  const title = event.status === "cancelled" ? `Cancelled: ${event.title}` : event.title;
+  const description = event.status === "cancelled"
+    ? `This event has been cancelled. Check the organiser for updates. ${event.description || event.title}`
+    : event.description || `${event.title} classic car event details, date, location and official organiser link.`;
+  const image = eventImageUrl(event);
   return {
-    title: event.title,
+    title,
     description: description.slice(0, 160),
     alternates: { canonical: `/events/${event.slug}` },
     twitter: {
       card: image ? "summary_large_image" : "summary",
-      title: event.title,
+      title,
       description: description.slice(0, 160),
       images: image ? [image] : [],
     },
     openGraph: {
       type: "article",
-      title: event.title,
+      title,
       description: description.slice(0, 160),
       url: `/events/${event.slug}`,
       images: image ? [image] : [],
@@ -51,10 +52,12 @@ export default async function EventDetailPage({ params }: PageProps) {
     getViewer(),
   ]);
   if (!event) notFound();
-  const photo = getEventPhotograph(event.slug);
+  const cancelled = event.status === "cancelled";
+  const image = eventImageUrl(event);
   const officialUrl =
-    safeExternalUrl(event.booking_url) || safeExternalUrl(event.organiser_url);
+    (cancelled ? null : safeExternalUrl(event.booking_url)) || safeExternalUrl(event.organiser_url);
   const organiserUrl = safeExternalUrl(event.organiser_url);
+  const reportUrl = `mailto:matthewcoxall@googlemail.com?subject=${encodeURIComponent(`Report event listing: ${event.title}`)}&body=${encodeURIComponent(`Event: ${event.title}\nListing: ${absoluteUrl(`/events/${event.slug}`)}\nEvent ID: ${event.id}\n\nPlease tell us what is incorrect or inappropriate, including any useful public source links:\n`)}`;
   const state = await getViewerEventState([event.id], viewer?.id);
   const eventData = {
     "@context": "https://schema.org",
@@ -66,7 +69,7 @@ export default async function EventDetailPage({ params }: PageProps) {
       ? `${event.end_date}${event.end_time ? `T${event.end_time}` : ""}`
       : undefined,
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-    eventStatus: "https://schema.org/EventScheduled",
+    eventStatus: cancelled ? "https://schema.org/EventCancelled" : "https://schema.org/EventScheduled",
     location: {
       "@type": "Place",
       name: event.venue_name,
@@ -80,7 +83,7 @@ export default async function EventDetailPage({ params }: PageProps) {
         .filter(Boolean)
         .join(", "),
     },
-    image: photo ? absoluteUrl(photo.src) : undefined,
+    image: image ? absoluteUrl(image) : undefined,
     url: absoluteUrl(`/events/${event.slug}`),
     organizer: event.organiser_name
       ? {
@@ -127,6 +130,7 @@ export default async function EventDetailPage({ params }: PageProps) {
         <Link href="/">Home</Link> /{" "}
         <Link href="/events?radius=uk">Events</Link> / {event.event_type}
       </nav>
+      {cancelled ? <div role="status" className="mb-6 rounded-lg border border-oxblood/30 bg-oxblood/10 p-5 text-oxblood"><h2 className="font-serif text-3xl font-semibold">This event has been cancelled</h2><p className="mt-2 leading-7">Please do not travel to this event. Contact the organiser for updates or booking questions. You can find other upcoming events below.</p></div> : null}
       <div className="detail-hero">
         <EventImage
           type={event.event_type}
@@ -135,12 +139,6 @@ export default async function EventDetailPage({ params }: PageProps) {
           priority
         />
       </div>
-      {photo && (
-        <p className="event-photo-note detail-photo-note">
-          {photo.context} · Photograph by {photo.credit}.{" "}
-          <Link href={`/photography#${event.slug}`}>Source &amp; licence</Link>
-        </p>
-      )}
       <div className="detail-layout">
         <article>
           <div className="flex flex-wrap gap-2">
@@ -180,20 +178,21 @@ export default async function EventDetailPage({ params }: PageProps) {
               organiser before travelling.
             </p>
           </div>
-          <div className="mt-6">
+          {!cancelled ? <div className="mt-6">
             <EventActions
               eventId={event.id}
               returnTo={`/events/${event.slug}`}
               signedIn={Boolean(viewer)}
-              canSave={Boolean(viewer)}
+              canSave={Boolean(viewer?.canUseRoadbook)}
               initialSaved={state.saved.has(event.id)}
               initialGoing={state.going.has(event.id)}
               goingCount={event.going_count ?? 0}
             />
-          </div>
+          </div> : <p className="mt-6 text-sm font-bold text-oxblood">Saving and marking attendance are unavailable for cancelled events.</p>}
+          <p className="mt-5 text-sm text-muted">Incorrect details, duplicate listing or unsuitable content? <a href={reportUrl} className="focus-ring font-bold underline">Report this event</a>.</p>
         </article>
         <aside className="detail-panel" aria-label="Plan your visit">
-          <p className="eyebrow">Plan your visit</p>
+          <p className="eyebrow">{cancelled ? "Cancelled event" : "Plan your visit"}</p>
           <h2 className="font-serif text-3xl mt-2">The essential details</h2>
           <dl>
             <Info label="Venue" value={event.venue_name} />
@@ -205,7 +204,7 @@ export default async function EventDetailPage({ params }: PageProps) {
             <Info
               label="Booking"
               value={
-                event.booking_required
+                cancelled ? "Cancelled — contact the organiser about existing bookings" : event.booking_required
                   ? "Advance booking required"
                   : "Check organiser page"
               }
@@ -227,21 +226,21 @@ export default async function EventDetailPage({ params }: PageProps) {
               rel="noopener noreferrer"
               className="button-primary"
             >
-              Official event page <ExternalLink size={16} />
+              {cancelled ? "Organiser updates" : "Official event page"} <ExternalLink size={16} />
             </a>
           ) : (
             <p className="mt-4 text-sm text-muted">
               Official link not supplied.
             </p>
           )}
-          <a
+          {!cancelled ? <a
             href={directions}
             target="_blank"
             rel="noopener noreferrer"
             className="text-link"
           >
             Get directions <ExternalLink size={15} />
-          </a>
+          </a> : null}
         </aside>
       </div>
       {related.length > 0 && (

@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowRight, LoaderCircle, LockKeyhole } from "lucide-react";
+import { LoaderCircle, LockKeyhole } from "lucide-react";
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createClient } from "@/lib/supabase/browser";
 import { googleWebClientId } from "@/lib/supabase/config";
+import { safeReturnPath } from "@/lib/supabase/return-path";
 
 type GoogleCredentialResponse = { credential?: string };
 
@@ -48,16 +49,6 @@ function subscribeOrigin() {
   return () => undefined;
 }
 
-function safeClientReturnPath(value: string) {
-  if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return "/account";
-  try {
-    const parsed = new URL(value, window.location.origin);
-    return parsed.origin === window.location.origin ? `${parsed.pathname}${parsed.search}${parsed.hash}` : "/account";
-  } catch {
-    return "/account";
-  }
-}
-
 async function noncePair() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   const raw = btoa(String.fromCharCode(...bytes));
@@ -77,8 +68,16 @@ export function GoogleSignIn({ returnTo = "/account" }: { returnTo?: string }) {
 
   const initialiseGoogle = useCallback(async () => {
     if (!direct || !scriptReady || !buttonRef.current || !window.google) return;
-    const { raw, hashed } = await noncePair();
+    let pair: Awaited<ReturnType<typeof noncePair>>;
+    try {
+      pair = await noncePair();
+    } catch {
+      setMessage("The Google button could not load. Continue with Google below instead.");
+      return;
+    }
+    const { raw, hashed } = pair;
     const element = buttonRef.current;
+    if (!element) return;
     element.replaceChildren();
 
     window.google.accounts.id.initialize({
@@ -93,25 +92,30 @@ export function GoogleSignIn({ returnTo = "/account" }: { returnTo?: string }) {
         }
         setPending(true);
         setMessage("");
-        const supabase = createClient();
-        const { error } = await supabase.auth.signInWithIdToken({
-          provider: "google",
-          token: credential,
-          nonce: raw
-        });
-        if (error) {
-          setPending(false);
-          setMessage("The Google pop-up could not complete sign-in. Use the secure redirect below instead.");
-          return;
-        }
-        // Delivery is deliberately best-effort: email provider issues must never
-        // delay or prevent an otherwise valid sign-in.
         try {
-          await supabase.functions.invoke("send-welcome-email");
+          const supabase = createClient();
+          const { error } = await supabase.auth.signInWithIdToken({
+            provider: "google",
+            token: credential,
+            nonce: raw
+          });
+          if (error) {
+            setPending(false);
+            setMessage("The Google pop-up could not complete sign-in. Use the secure redirect below instead.");
+            return;
+          }
+          // Delivery is deliberately best-effort: email provider issues must never
+          // delay or prevent an otherwise valid sign-in.
+          try {
+            await supabase.functions.invoke("send-welcome-email", { timeout: 3000 });
+          } catch {
+            // The function keeps its own idempotency ledger and can be retried later.
+          }
+          window.location.assign(safeReturnPath(returnTo));
         } catch {
-          // The function keeps its own idempotency ledger and can be retried later.
+          setPending(false);
+          setMessage("Sign-in could not connect. Check your connection and try again.");
         }
-        window.location.assign(safeClientReturnPath(returnTo));
       }
     });
     window.google.accounts.id.renderButton(element, {
@@ -126,21 +130,27 @@ export function GoogleSignIn({ returnTo = "/account" }: { returnTo?: string }) {
   }, [direct, returnTo, scriptReady]);
 
   useEffect(() => {
-    void initialiseGoogle();
+    const timer = window.setTimeout(() => { void initialiseGoogle(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [initialiseGoogle]);
 
   async function oauthFallback() {
     setPending(true);
     setMessage("");
-    const supabase = createClient();
-    const redirectTo = `https://classicsgo.com/auth/callback?next=${encodeURIComponent(safeClientReturnPath(returnTo))}`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo }
-    });
-    if (error) {
+    try {
+      const supabase = createClient();
+      const redirectTo = `https://classicsgo.com/auth/callback?next=${encodeURIComponent(safeReturnPath(returnTo))}`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo }
+      });
+      if (error) {
+        setPending(false);
+        setMessage("Google sign-in is temporarily unavailable. Please try again.");
+      }
+    } catch {
       setPending(false);
-      setMessage("Google sign-in is temporarily unavailable. Please try again.");
+      setMessage("Sign-in could not connect. Check your connection and try again.");
     }
   }
 
@@ -151,10 +161,10 @@ export function GoogleSignIn({ returnTo = "/account" }: { returnTo?: string }) {
           <Script
             src="https://accounts.google.com/gsi/client"
             strategy="afterInteractive"
-            onLoad={() => setScriptReady(true)}
+            onReady={() => setScriptReady(true)}
             onError={() => setMessage("The Google pop-up did not load. Use the secure redirect below instead.")}
           />
-          <div ref={buttonRef} className="min-h-11 w-full overflow-hidden rounded-md" aria-label="Continue with Google" />
+          <div ref={buttonRef} className={`min-h-11 w-full overflow-hidden rounded-md ${pending ? "pointer-events-none opacity-60" : ""}`} aria-busy={pending} aria-label="Continue with Google" />
           {pending ? (
             <p className="flex items-center gap-2 text-sm font-bold text-muted" role="status">
               <LoaderCircle className="h-4 w-4 animate-spin" /> Finishing secure sign-in…
@@ -164,11 +174,9 @@ export function GoogleSignIn({ returnTo = "/account" }: { returnTo?: string }) {
             type="button"
             onClick={oauthFallback}
             disabled={pending}
-            className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-3 rounded-md border border-ink/15 bg-white px-4 text-sm font-bold text-ink transition hover:border-racing/40 disabled:opacity-60"
+            className="focus-ring min-h-11 w-fit rounded-sm text-left text-xs font-medium text-muted underline decoration-ink/25 underline-offset-4 transition hover:text-racing disabled:cursor-wait disabled:opacity-60"
           >
-            <LockKeyhole className="h-5 w-5 text-racing" />
-            Use secure Google redirect
-            <ArrowRight className="h-4 w-4" />
+            Having trouble? Use Google redirect
           </button>
         </>
       ) : (

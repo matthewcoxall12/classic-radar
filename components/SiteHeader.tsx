@@ -7,7 +7,7 @@ const links = [
   { href: "/events?radius=uk", label: "Find events" },
   { href: "/clubs", label: "Clubs & organisers" },
   { href: "/membership", label: "The Roadbook" },
-  { href: "/submit-event", label: "Add an event" },
+  { href: "/submit-event/new", label: "Add an event" },
 ];
 export function SiteHeader({
   signedIn,
@@ -97,6 +97,7 @@ export function SiteHeader({
             Admin
           </Link>
         )}
+        {signedIn && <Link href="/submit-event" onClick={() => setOpen(false)}>My event listings</Link>}
       </nav>
     </header>
   );

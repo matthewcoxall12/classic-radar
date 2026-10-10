@@ -85,6 +85,6 @@ test("uses an identified, Europe-limited Nominatim request for town searches", a
   assert.equal(url.searchParams.get("q"), "Paris, France");
   assert.match(url.searchParams.get("countrycodes") ?? "", /(?:^|,)gb(?:,|$)/);
   assert.match(url.searchParams.get("countrycodes") ?? "", /(?:^|,)fr(?:,|$)/);
-  assert.equal(url.searchParams.get("email"), "support@classicsgo.com");
+  assert.equal(url.searchParams.get("email"), "matthewcoxall@googlemail.com");
   assert.match(requestHeaders?.get("User-Agent") ?? "", /ClassicsGo/);
 });

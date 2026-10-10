@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
+import { safeReturnPath } from "./supabase/return-path";
 import { createClient } from "@/lib/supabase/server";
+import { hasRoadbook } from "@/lib/entitlements";
 
 export type Viewer = {
   id: string;
@@ -7,21 +9,10 @@ export type Viewer = {
   displayName: string;
   tier: "free" | "roadbook";
   isAdmin: boolean;
+  canUseRoadbook: boolean;
 };
 
-export function safeReturnPath(value: string | null | undefined, fallback = "/account") {
-  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
-    return fallback;
-  }
-
-  try {
-    const parsed = new URL(value, "https://classicsgo.com");
-    if (parsed.origin !== "https://classicsgo.com") return fallback;
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
-    return fallback;
-  }
-}
+export { safeReturnPath } from "./supabase/return-path";
 
 export async function getViewer(): Promise<Viewer | null> {
   const supabase = await createClient();
@@ -32,7 +23,7 @@ export async function getViewer(): Promise<Viewer | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name,tier,is_admin")
+    .select("display_name,tier,is_admin,subscription_status,subscription_expires_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -44,7 +35,8 @@ export async function getViewer(): Promise<Viewer | null> {
     email,
     displayName: profile?.display_name?.trim() || fallbackName,
     tier: profile?.tier === "roadbook" ? "roadbook" : "free",
-    isAdmin: profile?.is_admin === true
+    isAdmin: profile?.is_admin === true,
+    canUseRoadbook: hasRoadbook(profile),
   };
 }
 
