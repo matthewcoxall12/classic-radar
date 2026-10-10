@@ -22,6 +22,20 @@ export function verifyStripeSignature(body: string, signature: string | null, se
 }
 
 export type BillingPlan = "annual" | "monthly";
+export function roadbookCheckoutForm({ customer, userId, price, generation, site }: { customer: string; userId: string; price: string; generation: string; site: string }) {
+  return new URLSearchParams({
+    mode: "subscription", customer, client_reference_id: userId,
+    "metadata[roadbook_price_id]": price, "metadata[checkout_generation]": generation,
+    "line_items[0][price]": price, "line_items[0][quantity]": "1",
+    "subscription_data[metadata][classicsgo_user_id]": userId,
+    "subscription_data[metadata][product]": "roadbook",
+    success_url: `${site}/membership?checkout=complete`, cancel_url: `${site}/membership?checkout=cancelled`,
+    "consent_collection[terms_of_service]": "required", "billing_address_collection": "auto",
+    // ClassicsGo sells membership directly; never inherit merchant-of-record
+    // defaults or their separate fees from Stripe account onboarding.
+    "managed_payments[enabled]": "false"
+  });
+}
 export function validateRoadbookPrice(price: StripeRecord, plan: BillingPlan, live = true): void {
   const recurring = record(price.recurring);
   if (!price.active || price.livemode !== live || price.type !== "recurring" || price.currency !== "gbp" || price.unit_amount !== (plan === "annual" ? 1500 : 200)

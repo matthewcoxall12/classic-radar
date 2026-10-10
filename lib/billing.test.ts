@@ -1,7 +1,20 @@
 import { createHmac } from "node:crypto";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { subscriptionFromEvent, subscriptionSnapshot, validateRoadbookPrice, verifyStripeSignature } from "./billing.ts";
+import { roadbookCheckoutForm, subscriptionFromEvent, subscriptionSnapshot, validateRoadbookPrice, verifyStripeSignature } from "./billing.ts";
+
+test("Roadbook Checkout explicitly uses direct billing regardless of Stripe merchant-of-record defaults", () => {
+  for (const price of ["price_annual", "price_monthly"]) {
+    const form = roadbookCheckoutForm({ customer: "cus_fixture", userId: "fixture-user", price, generation: "fixture-generation", site: "https://classicsgo.com" });
+    assert.equal(form.get("managed_payments[enabled]"), "false");
+    assert.equal(form.get("mode"), "subscription");
+    assert.equal(form.get("line_items[0][price]"), price);
+    assert.equal(form.get("line_items[0][quantity]"), "1");
+    assert.equal(form.get("metadata[checkout_generation]"), "fixture-generation");
+    assert.equal(form.get("subscription_data[metadata][classicsgo_user_id]"), "fixture-user");
+    assert.equal(form.get("consent_collection[terms_of_service]"), "required");
+  }
+});
 
 const secret = "whsec_unitFixtureOnly";
 const timestamp = 1791626400;
