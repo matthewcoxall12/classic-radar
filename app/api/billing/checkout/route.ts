@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { hasRoadbook } from "@/lib/entitlements";
-import { record, stripeId, validateRoadbookPrice } from "@/lib/billing";
+import { record, roadbookCheckoutForm, stripeId, validateRoadbookPrice } from "@/lib/billing";
 import { billingConfig, billingResponse, billingRpc, stripeRequest, validBillingOrigin } from "@/lib/billing-server";
 
 export const runtime = "nodejs";
@@ -53,16 +53,7 @@ export async function POST(request: Request) {
     if (stripeId(latest.id) && record(latest.metadata).checkout_generation === generation) {
       generation = String(await billingRpc("billing_advance_checkout", { p_user_id: user.id, p_lock_id: checkoutLock }));
     }
-    const session = await stripeRequest("checkout/sessions", new URLSearchParams({
-      mode: "subscription", customer, client_reference_id: user.id,
-      "metadata[roadbook_price_id]": price,
-      "metadata[checkout_generation]": generation,
-      "line_items[0][price]": price, "line_items[0][quantity]": "1",
-      "subscription_data[metadata][classicsgo_user_id]": user.id,
-      "subscription_data[metadata][product]": "roadbook",
-      success_url: `${config.site}/membership?checkout=complete`, cancel_url: `${config.site}/membership?checkout=cancelled`,
-      "consent_collection[terms_of_service]": "required", "billing_address_collection": "auto"
-    }), `classicsgo-checkout-${customer}-${generation}`);
+    const session = await stripeRequest("checkout/sessions", roadbookCheckoutForm({ customer, userId: user.id, price, generation, site: config.site }), `classicsgo-checkout-${customer}-${generation}`);
     if (typeof session.url !== "string" || !session.url.startsWith("https://checkout.stripe.com/")) throw new Error("Checkout URL is missing");
     return billingResponse({ url: session.url });
   } catch (error) {

@@ -1,6 +1,6 @@
 # Roadbook billing operations
 
-Paid checkout stays disabled until the complete payment flow is verified. On 10 October 2026 Stripe's Account status showed Payments and Payouts Active for ClassicsGo (`acct_1UOy6SBKvYr7hh3N`, teammakeit3d@gmail.com). No live charge or payout change was made. Earlier onboarding notes below are historical; the current remaining work is credentials, webhooks, durable purchase confirmation and provider end-to-end testing.
+Paid checkout stays disabled until the complete payment flow is verified. On 10 October 2026 Stripe's Account status showed Payments and Payouts Active for ClassicsGo (`acct_1UOy6SBKvYr7hh3N`, teammakeit3d@gmail.com). No live charge or payout change was made. Live credentials, webhooks, portal and invoice terms are configured, and genuine test-mode checkout/lifecycle checks passed. Remaining launch checks include actual confirmation-email delivery, Google branding, browser photo upload and welcome-sender DNS. Earlier onboarding notes below are historical.
 
 ## Current live setup — 10 October 2026
 
@@ -10,13 +10,35 @@ Paid checkout stays disabled until the complete payment flow is verified. On 10 
 - Customer portal `bpc_1UP3T4BKvYr7hh3NH5auuSHw`: invoice history, payment-method changes and period-end cancellation enabled; arbitrary plan switching disabled; return URL https://classicsgo.com/membership.
 - Public support email matthewcoxall@googlemail.com, support URL https://classicsgo.com/contact, Terms and Privacy URLs saved. Statement descriptor CLASSICSGO.
 - Owner-authorised public contact address: 48 Furzedale Park, Hythe, SO45 3HW, United Kingdom.
-- Vercel production has the two live price IDs and `BILLING_ENABLED=false`. No billing API key or webhook signing secret has been installed yet.
-- Owner approved creating restricted live/test keys and billing webhooks. The live key's five permissions are Customers write, Checkout Sessions write, Customer Portal write, Prices read and Subscriptions read. Stripe requires fresh email verification before creating it; no key has been issued yet.
+- Vercel production has the two live price IDs, a sensitive server-only restricted key, the sensitive webhook signing secret and `BILLING_ENABLED=false`. The deployment was rebuilt with these settings. Unsigned webhook requests return HTTP 400, Invalid signature.
+- Owner approved connecting live/test keys and billing webhooks and completed Stripe email/authenticator verification. The live key's five permissions are Customers write, Checkout Sessions write, Customer Portal write, Prices read and Subscriptions read.
+- Live webhook `we_1UP3emBKvYr7hh3NhBbEMLoX` is active at https://classicsgo.com/api/billing/webhook, snapshot API version 2026-09-30.endive, listening to the eleven lifecycle events below.
+- Successful-payment and refund receipts are enabled. Upcoming-renewal, expiring-card and failed-payment emails are enabled with Stripe-hosted payment-update and customer-portal links. Required-payment-confirmation emails are enabled.
+- Invoice PDFs/attachments are enabled. The default memo explains renewal and contact; the default footer retains dated Roadbook purchase terms, operator/address, price/interval, membership benefits, cancellation and the first-payment refund procedure. Saving these defaults does not prove actual delivery.
+- A preview-only test setup was created, then its credentials, prices, mode and allowlist were removed after testing. Test webhook `we_1UP3jpBKvYr7hh3Nn5a7l2gh` is disabled because Vercel SSO blocks unauthenticated provider delivery. Project-wide protection was not disabled. Authentic provider-event delivery was verified locally using the official Stripe CLI.
 - Supabase welcome function version 5 is active with conservative retry handling. Sender DNS and sending credentials remain pending; welcome delivery is disabled.
 
-These are configuration checks, not proof of a completed purchase. Keep checkout disabled until the launch evidence below is recorded.
+The configuration above is supplemented by the completed test purchases below. Keep checkout disabled until the remaining launch checks are complete.
 
-## Configuration and launch
+## Provider test evidence — 10 October 2026
+
+Testing used a dedicated disposable auth account, Stripe test mode, a local application on port 3004 and the official Stripe CLI forwarding authentic signed events. No real member or real card was used. Vercel deployment protection remains enabled.
+
+- Annual app checkout `cs_test_a1cFYfeY6hefxxOJbWxYYgpzk1h81yOc1OAmjgVK4bmJUMnZvS09nR0GYK` completed in browser for GBP 1500. Subscription `sub_1UP3qQBKvYr7hh3NDR8ZEuXH`; paid invoice `in_1UP3qOBKvYr7hh3NM2Ge8Hu5`.
+- Authentic checkout, invoice-paid and subscription-created events returned HTTP 200 and granted Roadbook through 10 October 2027. Example IDs: `evt_1UP3qSBKvYr7hh3Nql0zecOm`, `evt_1UP3qSBKvYr7hh3NrJKmcOjc`, `evt_1UP3qSBKvYr7hh3NGC0RaEY8`.
+- Period-end cancellation retained access and the hosted ClassicsGo test portal displayed the correct 10 October 2027 service end. Immediate cancellation removed access. Original event replay returned 200 without regranting; tampered and unsigned requests returned 400.
+- Monthly app checkout completed in browser for GBP 200. Subscription `sub_1UP3t2BKvYr7hh3NgDOgpSFP`; paid invoice `in_1UP3t0BKvYr7hh3NadCFBUQq`; Roadbook activated through 10 November 2026.
+- An official decline-after-attachment test payment method caused a genuine failed renewal: `invoice.payment_failed` event `evt_1UP3v4BKvYr7hh3NtSyOgzRB`, invoice `in_1UP3v0BKvYr7hh3NWBt4dvTa`. Canonical subscription status became `past_due` and premium access was removed.
+- Both invoices retained the complete 3210-character purchase-terms footer and 266-character memo. No customer email delivery is claimed: the disposable email is a reserved example-domain address.
+- Missing authentication returned 401; cross-origin checkout returned 403; retry reused the unpaid checkout; a forged success query left the account free; the authenticated customer portal returned the correct Stripe session.
+
+The provider rejected the first checkout because Managed Payments was enabled by the test account's defaults. Checkout now explicitly sets `managed_payments[enabled]=false` to use ClassicsGo's direct Stripe billing, with a regression test. No account-wide Managed Payments or tax settings were changed.
+
+Cleanup completed: both test subscriptions cancelled, failed invoice voided, both test payments refunded, test customer and dedicated auth account deleted, no open Checkout sessions or active test subscriptions left for that customer. Local app/listener processes stopped; remote preview credentials removed. Automatic tool approval rejected deletion of ten local temporary credential/session JSON files without a stated reason; these remain in the owner-only classicsgo-billing-setup temp directory and require local cleanup. Production credentials and its active webhook remain configured, with checkout disabled. Recreate an isolated test environment for future provider testing rather than reusing these deleted fixtures. Hosted preview delivery and actual receipt-email delivery were not certified by the local tests.
+
+Sanitized provider evidence is retained in the workspace artifacts as billing-provider-verification-2026-10-10.json and .md. Lint, TypeScript, all 58 automated tests and the production build passed after the direct-billing correction.
+
+## Configuration and launch reference
 
 1. Complete the new ClassicsGo account merchant identity, bank/payout and Stripe onboarding requirements. Do not use an unrelated GPBox or Vroova merchant.
 2. Create two active live recurring GBP prices with licensed quantity one and tax behaviour explicitly inclusive: annual 1500 pence every year and monthly 200 pence every month. The website verifies these exact amounts, tax behaviour and intervals against Stripe before starting checkout. Exclusive or unspecified tax prices are rejected so that later tax configuration cannot add charges above the advertised consumer price. Annual saves £9 against twelve monthly payments.
