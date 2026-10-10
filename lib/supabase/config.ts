@@ -34,4 +34,4 @@ export const supabasePublishableKey = supabaseConfig.publishableKey;
 
 export const googleWebClientId =
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-  "436264658887-u8v8p50r0c1gpq5ajeiipppc49d6oqh0.apps.googleusercontent.com";
+  "44587218549-a6vbktqgp84ert9hfobih9rg59mk84jp.apps.googleusercontent.com";
