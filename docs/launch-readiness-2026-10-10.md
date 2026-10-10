@@ -62,4 +62,3 @@ Follow-up import repair and directory evidence are recorded in event-coverage-au
 Production follow-up PR #22 passed CI and deployed as 35d0dbd. A live browser check confirmed the new Cancelling and refunds section. Stripe activation is now open on Review and submit and explicitly needs Add bank account; final financial submission is not completed. The visible review contains no GPBox branding or old Workspace email; teammakeit3d@gmail.com remains the requested Stripe account login. Public support-email and checkout branding must still be verified after activation.
 
 A later browser check reached Home – ClassicsGo – Stripe and displayed 'You’re now in your live account'. The activation form was no longer open. This records dashboard progress only: live payment capabilities, webhook delivery and end-to-end checkout have not yet been verified.
-
