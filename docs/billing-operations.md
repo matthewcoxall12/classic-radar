@@ -1,6 +1,6 @@
 # Roadbook billing operations
 
-Paid checkout stays disabled until the complete payment flow is verified. On 10 October 2026 Stripe's Account status showed Payments and Payouts Active for ClassicsGo (`acct_1UOy6SBKvYr7hh3N`, teammakeit3d@gmail.com). No live charge or payout change was made. Live credentials, webhooks, portal and invoice terms are configured, and genuine test-mode checkout/lifecycle checks passed. Remaining launch checks include actual confirmation-email delivery, Google branding, browser photo upload and welcome-sender DNS. Earlier onboarding notes below are historical.
+Paid checkout stays disabled until the complete payment flow is verified. On 10 October 2026 Stripe's Account status showed Payments and Payouts Active for ClassicsGo (`acct_1UOy6SBKvYr7hh3N`, teammakeit3d@gmail.com). No live charge or payout change was made. Live credentials, webhooks, portal and invoice terms are configured, and genuine test-mode checkout/lifecycle checks passed. Browser photograph upload/persistence/removal passed. A manually resent Stripe TEST refund receipt arrived in the owner inbox with receipt and full contract invoice PDFs, authenticated SPF/DKIM/DMARC. Automatic first-payment receipt delivery has not been separately exercised. Remaining external launch checks are Google branding and welcome-sender DNS. Earlier onboarding notes below are historical.
 
 ## Current live setup — 10 October 2026
 

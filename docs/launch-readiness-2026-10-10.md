@@ -1,5 +1,17 @@
 # ClassicsGo launch audit — 10 October 2026
 
+## Latest verified state — 10 October 2026, 18:52 UK time
+
+This section supersedes the historical checkpoints below.
+
+- Production commit a570eb66968b38934e0c78ebf829ec5e0944378d is READY on both classicsgo.com and www.classicsgo.com. Lint, TypeScript, 58 tests and production build passed. Live payments remain disabled.
+- The owner enabled Chrome file-URL access. The live organiser form selected and saved a WebP on a deliberately cancelled technical fixture. Database image_url persisted; the event page loaded the stored image at 1000x500. Organiser photo removal then cleared image_url and storage objects; the disposable cancelled record was removed. It never entered discovery. Evidence: workspace artifacts/photo-upload-verification-2026-10-10.md and photo-upload-verified-2026-10-10.png.
+- A visual receipt check found inherited GPBox artwork and orange colours. Replaced the live icon with the genuine ClassicsGo asset, removed the GPBox logo, set both brand/accent colours to #173b32, saved, reloaded and verified the ClassicsGo receipt preview. Evidence: workspace artifacts/stripe-branding-corrected-2026-10-10.png.
+- Stripe live branding, restricted server credentials, eleven-event webhook, inclusive GBP15/year and GBP2/month prices, cancellation portal and receipt/renewal/failure email configuration are saved. Genuine test purchases and lifecycle checks passed; see billing-operations.md.
+- Manually resent the existing refunded TEST invoice receipt to matthewcoxall@googlemail.com. Gmail message 1a126f07937a206e arrived in INBOX at 17:50:55 UTC, subject Your refund from ClassicsGo #3001-1840, with refund receipt and Invoice-MP1YYXQO-0001.pdf attached. SPF/DKIM/DMARC passed. The invoice PDF contains the dated full Roadbook purchase terms, operator/address, prices, renewal, cancellation and initial refund instructions. This proves manual test receipt delivery and retained terms, not automatic live first-payment delivery. No real payment occurred.
+- Google personal project classicsgo has the ClassicsGo app name, personal support/developer email and correct homepage/privacy/terms links. The missing prepared 120px logo was uploaded and Branding changes saved confirmed. Google still reports its previous homepage-ownership failure and explicitly requires 24 hours after Search Console verification. Earliest retry remains 11 October 2026 at approximately 12:22 UK time. Saving the logo is not branding approval.
+- Resend mail.classicsgo.com verification was requested. Status is Pending, but its DKIM TXT and two sending CNAME records still do not resolve. Squarespace DNS redirects to login; no DNS was changed. Support ticket 14755424 received an escalation-to-Product-Specialist reply at 17:15 UTC. Recovery is not complete. Welcome credentials and delivery stay disabled.
+
 ## Implemented and checked
 
 - Immediate signed-in member publication, full event details, official/booking links and optional owned image upload. Owners edit, cancel and restore listings.
