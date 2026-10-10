@@ -115,7 +115,8 @@ export function eventStructuredData(event: ClassicEvent, rating?: RatingSummary 
       "@type": "Organization", name: text(event.organiser_name), url: publicUrl(event.organiser_url),
     } : undefined,
     isAccessibleForFree: admission ? admission.price === 0 : undefined,
-    offers: admission && event.status !== "cancelled" ? { "@type": "Offer", ...admission, url: booking } : undefined,
+    // A free walk-in meet's Facebook information page isn't a ticket checkout.
+    offers: admission && event.status !== "cancelled" ? { "@type": "Offer", ...admission, url: event.booking_required ? booking : undefined } : undefined,
     aggregateRating: rating && !rating.unavailable && Number.isInteger(rating.count) && rating.count > 0 &&
       rating.average != null && Number.isFinite(rating.average) && rating.average >= 1 && rating.average <= 5 ? {
         "@type": "AggregateRating", ratingValue: rating.average, reviewCount: rating.count, bestRating: 5, worstRating: 1,

@@ -69,9 +69,10 @@ test("offers never invent availability, currency or uncertain prices", () => {
   assert.deepEqual(eventAdmission("Free admission"), { price: 0, priceCurrency: "GBP" });
   for (const price of ["From £12", "£12–£20", "Free for children", "Adults £12, children free", "£12 plus fees", "Minimum £20 donation"]) assert.equal(eventAdmission(price), undefined);
   assert.equal(eventAdmission("£12", "FR"), undefined);
-  const offer = eventStructuredData({ ...event, price_text: "£12", booking_url: "https://example.com/book" })!.offers!;
+  const offer = eventStructuredData({ ...event, price_text: "£12", booking_required: true, booking_url: "https://example.com/book" })!.offers!;
   assert.equal(offer.url, "https://example.com/book");
   assert.equal(Object.hasOwn(offer, "availability"), false);
+  assert.equal(eventStructuredData({ ...event, booking_url: "https://www.facebook.com/events/123" })!.offers?.url, undefined);
 });
 
 test("cancelled events retain their date/location and drop ticket offers", () => {
