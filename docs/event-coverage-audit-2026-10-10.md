@@ -19,10 +19,12 @@ Live project: `rnayhhsurmztrohtftqo`. Counts checked against production using SQ
    - https://www.gccg.org.uk/locations/ace-cafe-3/
    - https://www.gccg.org.uk/locations/waterloo-arms/
    - https://www.gccg.org.uk/locations/cross-hands-hotel/
+   Cross Hands Hotel's postcode was subsequently corrected to `BS37 6RJ` using the hotel's own [contact page](https://www.greenekinginns.co.uk/hotels/gloucestershire/cross-hands-hotel/find-us); the club venue page had a different postcode.
 4. Two UK discovery catalogue start URLs returned 404. Updated using their official live event pages:
    - Austin Healey Club: `https://www.austinhealeyclub.com/events/` → https://www.austinhealeyclub.com/pages/action-planner.html
    - RREC: `https://rrec.org.uk/events` → https://rrec.org.uk/about/events
    Separate one-source GitHub runs subsequently completed successfully.
+5. A further 36 upcoming listings and one past listing now have verified venue addresses/postcodes and usable location coordinates across 25 venues. The TR Derbyshire Dales placeholder was resolved to South Wingfield Social Club from its official event listing. Of these 25 venues, 23 use **approximate postcode centroids**, not front-door or event-entrance pins; two use official venue/council coordinates. Source-by-source evidence and reversible before values are retained outside the repository in `work/artifacts/venue-location-followup-2026-10-10.json` and `venue-correction-backup-2026-10-10.json`.
 
 ## Verification
 
@@ -34,6 +36,7 @@ Live project: `rnayhhsurmztrohtftqo`. Counts checked against production using SQ
 - Austin Healey source verification: https://github.com/matthewcoxall12/classic-radar/actions/runs/38056405120
 - RREC source verification: https://github.com/matthewcoxall12/classic-radar/actions/runs/38056407425
 - Ace Cafe location search at a one-mile radius now returns both repaired listings.
+- All 36 newly repaired upcoming events were found through `search_public_events` using the anonymous role and a one-mile radius of their stored coordinates. Final production counts remain 400 total, 83 published and 69 current/upcoming UK listings.
 - Security advisors introduced no new access grants. Existing intentional restricted/private tables have RLS with no client policies; token-based shared Roadbook and authenticated account export/delete functions remain intentional SECURITY DEFINER endpoints. Leaked-password protection remains an existing separate configuration warning.
 
 ## Link check
@@ -47,8 +50,8 @@ Historical event source URLs were retained rather than replaced with unrelated c
 
 ## Remaining data limitations
 
-- 38 current listings still lack coordinates (down from 44); 36 lack town. These cannot appear in radius searches until exact venue information is verified. County/keyword/date search still includes them. Two use explicit venue placeholders; do not invent destinations.
-- Remaining list: `work/artifacts/event-coverage-remaining-2026-10-10.json`.
+- Two current listings still lack coordinates (down from 44); one lacks town. County/keyword/date search still includes them, while radius search excludes them. The 5 November GCCG North East pub meet has a member-only venue on its official event page; no protected information was obtained or published. The 8 November Poppy Remembrance Road Run identifies Marine Parade seafront, but its precise start point could not be confirmed from publicly accessible organiser material. No destination was guessed.
+- Final remaining list, primary sources and coordinate precision: `work/artifacts/venue-location-followup-2026-10-10.json`. The earlier `event-coverage-remaining-2026-10-10.json` is an intermediate snapshot before the second location repair.
 - Discovery still reports some legitimate remote access/redirect/PDF/robots restrictions, plus an unresolved Historic Vehicle Events hostname. The repair does not bypass remote restrictions or assume a different business owns that source.
 - Most listings do not have a reusable event photograph. The UI intentionally uses approved reusable photos or owner uploads; discovered image metadata is not proof of reuse permission.
 - Directory growth needs a continuing verified organiser/source intake and editorial review. Paid outreach should not claim exhaustive UK coverage or thousands of live events.
