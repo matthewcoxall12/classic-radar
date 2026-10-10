@@ -13,9 +13,13 @@
 
 ## Evidence
 
-Lint, TypeScript, production build and 38 unit tests passed. Five rollback-only database suites cover session security, administrator defaults, self-service publishing, premium/privacy/attendance and search pagination. Synthetic fixtures do not remain in production. Desktop and 390px mobile homepage were visually checked; no horizontal overflow.
+Lint, TypeScript and 39 unit tests passed; the main audit production build passed. Six rollback-only database suites cover session security, administrator defaults, self-service publishing, premium/privacy/attendance, search pagination and caller-only account export/deletion. Synthetic fixtures do not remain in production. Desktop and 390px mobile homepage were visually checked; no horizontal overflow.
 
-Seven coordinated database migrations were applied to rnayhhsurmztrohtftqo. Welcome function v4 deployed with JWT verification retained. No transactional email credentials are configured, so welcome delivery remains disabled; login does not depend on it. Personal Reply-To is ready for a future verified transactional sender.
+Eight coordinated database migrations were applied to rnayhhsurmztrohtftqo. The final migration restores missing caller-only account RPCs with recent/live-session checks and includes caller-owned published events in exports. Welcome function v4 deployed with JWT verification retained. No transactional email credentials are configured, so welcome delivery remains disabled; login does not depend on it. Personal Reply-To is ready for a future verified transactional sender.
+
+Production browser checks passed personal Google redirect sign-in, attendance and wishlist persistence after reload, private Roadbook notes, optional public sharing without private notes, revoked-link 404, an actual calendar download, event-editor URL rejection with retained input, and saving edits to a cancelled listing without publishing it. Account export initially exposed the missing RPC and now reports a successful download after repair. Temporary trips, attendance, wishlist and cancelled listing fixtures were removed. No real account was deleted or globally signed out. Both public domain forms open the production site; www canonicalises to the apex domain.
+
+Final editor polish retains consent checkboxes on validation failure, allows owners to maintain an unchanged historical start date and removes an owned photograph only after its replacement/removal is saved successfully. New events still require a current/future date.
 
 ## External account work and launch gate
 
@@ -23,7 +27,7 @@ The personal Google account already has a verified ClassicsGo administrator prof
 
 GitHub CLI is authenticated as matthewcoxall12. GitHub and Supabase browser account settings require user sign-in before recovery/contact emails can be verified or changed. No unrelated project, billing, Workspace subscription, nameserver or email DNS changes were made.
 
-Do not begin outreach until the personal OAuth cutover and a complete signed-in browser journey (publish with image, edit/cancel, attendance, wishlist, Roadbook, share/revoke, calendar, account controls) pass. Database integration tests provide strong boundary evidence but do not replace that journey. Paid billing is not enabled: Roadbook is accurately offered as invitation-only early access with no payment.
+Do not begin outreach until the personal OAuth cutover and a complete publish-with-image browser journey pass. Chrome's ChatGPT extension currently blocks automated file selection because Allow access to file URLs is disabled; the user has been given the official enabling instructions. Upload signatures, ownership and database boundaries pass automated checks, but a successful browser upload/publication has not been claimed. Database integration tests provide strong boundary evidence but do not replace that journey. Paid billing is not enabled: Roadbook is accurately offered as invitation-only early access with no payment.
 
 ## Security advisor interpretation
 
