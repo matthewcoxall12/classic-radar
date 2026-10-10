@@ -106,6 +106,7 @@ test("Schema.org Event extraction produces review-only provenance", () => {
   assert.equal(candidates.length, 1);
   assert.equal(candidates[0].startDate, nextYear + "-08-09");
   assert.equal(candidates[0].town, "Sampletown");
+  assert.equal(candidates[0].imageUrl, null, "A missing photo must not become the event webpage URL");
   assert.equal(candidates[0].sources[0].method, "json-ld");
   assert.equal(candidates[0].sources[0].requiresReview, true);
 });
@@ -132,6 +133,7 @@ test("unstructured detail pages stay low confidence and review-only", () => {
     },
   );
   assert.equal(candidate.confidenceScore, 62);
+  assert.equal(candidate.imageUrl, null, "Missing og:image must remain absent");
   assert.equal(candidate.sources[0].requiresReview, true);
 });
 
